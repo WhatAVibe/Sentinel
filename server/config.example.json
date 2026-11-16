@@ -1,0 +1,18 @@
+{
+  "server_name": "Home Sentinel",
+  "host": "0.0.0.0",
+  "port": 8765,
+  "storage_dir": "storage",
+  "public_url": "",
+  "pair_code_ttl_seconds": 600,
+  "command_timeout_seconds": 90,
+  "retention_days": 30,
+  "max_upload_mb": 32,
+  "allow_registration": true,
+  "log_requests": true,
+  "ntfy_url": "",
+  "ntfy_topic": "",
+  "offline_alert_seconds": 300,
+  "power_check_seconds": 20,
+  "boot_notify": true
+}

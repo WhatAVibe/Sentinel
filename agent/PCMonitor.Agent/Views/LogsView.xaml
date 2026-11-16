@@ -1,0 +1,109 @@
+<UserControl x:Class="PCMonitor.Agent.Views.LogsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="26,22,18,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Logs" Style="{StaticResource H1}" />
+                <TextBlock Text="Every request, command, trigger and error" Style="{StaticResource MutedText}"
+                           Margin="0,4,0,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Border Style="{StaticResource Pill}" Margin="0,0,8,0">
+                    <TextBlock x:Name="CountText" Text="0 entries" FontSize="11" />
+                </Border>
+                <Button Content="Copy" Style="{StaticResource GhostButton}" Padding="12,7" Margin="0,0,6,0"
+                        Click="Copy_Click" />
+                <Button Content="Clear" Style="{StaticResource GhostButton}" Padding="12,7" Margin="0,0,6,0"
+                        Click="Clear_Click" />
+                <Button Content="Open folder" Style="{StaticResource GhostButton}" Padding="12,7"
+                        Click="Folder_Click" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchBox" Padding="10,8" TextChanged="Search_TextChanged"
+                     ToolTip="Filter by text or level (info, http, error...)" />
+            <CheckBox x:Name="AutoScroll" Grid.Column="1" Content="Follow" Margin="14,0,0,0"
+                      IsChecked="True" VerticalAlignment="Center" />
+        </Grid>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10">
+            <ListBox x:Name="LogList" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="4,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="64" />
+                                    <ColumnDefinition Width="66" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding TimeText}" FontFamily="Consolas" FontSize="11"
+                                           Foreground="{StaticResource Muted}" Margin="0,1,0,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="9"
+                                           FontWeight="SemiBold" Margin="0,2,8,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Level}" Value="error">
+                                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="warning">
+                                                    <Setter Property="Foreground" Value="{StaticResource Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="notice">
+                                                    <Setter Property="Foreground" Value="{StaticResource Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="event">
+                                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="http">
+                                                    <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{StaticResource Muted}"
+                                               TextWrapping="Wrap" MaxHeight="58" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

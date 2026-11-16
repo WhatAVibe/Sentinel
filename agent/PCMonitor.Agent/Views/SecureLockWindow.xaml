@@ -1,0 +1,44 @@
+<Window x:Class="PCMonitor.Agent.Views.SecureLockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        WindowStartupLocation="Manual" Background="#050608" FontFamily="Segoe UI"
+        Title="Sentinel secure lock">
+    <Grid>
+        <Canvas x:Name="WallpaperCanvas" ClipToBounds="True" Background="#070A0F" />
+        <Border Background="#4D000000" />
+        <Border Width="440" CornerRadius="22" Background="#F012161C" BorderBrush="#2A3340"
+                BorderThickness="1" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="46" Height="46" CornerRadius="14" ClipToBounds="True">
+                        <Border.Background>
+                            <ImageBrush ImageSource="pack://application:,,,/Assets/logo.png" Stretch="UniformToFill" />
+                        </Border.Background>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="This PC is locked" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Sentinel secure lock" FontSize="11" Foreground="{StaticResource Muted}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBlock x:Name="MessageText" FontSize="13" TextWrapping="Wrap" LineHeight="19"
+                           Margin="0,20,0,0" Foreground="{StaticResource Text}" />
+
+                <TextBlock Text="Enter the 6-digit code from your phone to unlock."
+                           FontSize="11" Foreground="{StaticResource Muted}" Margin="0,18,0,8" TextWrapping="Wrap" />
+                <TextBox x:Name="CodeBox" FontFamily="Consolas" FontSize="28" Padding="14,10"
+                         TextAlignment="Center" MaxLength="6" BorderThickness="1"
+                         Background="#0E1218" Foreground="{StaticResource Text}"
+                         BorderBrush="{StaticResource Line}" />
+                <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}" FontSize="12"
+                           Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
+                <Button Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"
+                        Padding="18,11" Click="Unlock_Click" IsDefault="True" />
+                <TextBlock Text="Input is restricted while this screen is active. Ctrl+Alt+Delete still belongs to Windows."
+                           FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                           TextAlignment="Center" Margin="0,14,0,0" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

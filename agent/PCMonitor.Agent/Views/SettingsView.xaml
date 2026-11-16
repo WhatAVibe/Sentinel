@@ -1,0 +1,325 @@
+<UserControl x:Class="PCMonitor.Agent.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel Margin="26,22,18,24">
+            <TextBlock Text="Settings" Style="{StaticResource H1}" />
+            <TextBlock Text="Server, capture, access and system behaviour" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+
+            <!-- connection -->
+            <Border Style="{StaticResource Card}" Margin="0,18,0,12">
+                <StackPanel>
+                    <TextBlock Text="Server connection" Style="{StaticResource H2}" />
+                    <TextBlock Text="Address of your relay server. Works on LAN, Tailscale, ngrok or a public host."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ServerBox" Padding="10,9" />
+                        <Button Grid.Column="1" Content="Save &amp; reconnect" Style="{StaticResource PrimaryButton}"
+                                Margin="8,0,0,0" Padding="14,9" Click="SaveServer_Click" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Test connection" Style="{StaticResource GhostButton}" Padding="14,7" Click="Test_Click" />
+                        <Button Content="Pair another phone" Style="{StaticResource GhostButton}" Padding="14,7"
+                                Margin="8,0,0,0" Click="AddPhone_Click" />
+                        <Button Content="Unpair this PC" Style="{StaticResource DangerButton}" Padding="14,7"
+                                Margin="8,0,0,0" Click="Unpair_Click" />
+                    </StackPanel>
+                    <TextBlock x:Name="ServerStatus" Style="{StaticResource MutedText}" Margin="0,10,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- device -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Device" Style="{StaticResource H2}" />
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DeviceNameBox" Padding="10,9" />
+                        <Button Grid.Column="1" Content="Rename" Style="{StaticResource GhostButton}" Padding="14,9"
+                                Margin="8,0,0,0" Click="Rename_Click" />
+                    </Grid>
+                    <TextBlock x:Name="DeviceIdText" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- linked phones -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock Text="Linked phones" Style="{StaticResource H2}" />
+                        <Button Content="Refresh" Style="{StaticResource GhostButton}" Padding="12,6"
+                                HorizontalAlignment="Right" Click="RefreshPhones_Click" />
+                    </Grid>
+                    <TextBlock Text="Phones that can control this PC. Remove a stale or lost device here."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <ItemsControl x:Name="PhonesList" Margin="0,12,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource InnerCard}" Padding="12" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding CreatedText, StringFormat='linked {0}'}"
+                                                       Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                                            <TextBlock Text="{Binding LastSeenText, StringFormat='last seen {0}'}"
+                                                       Style="{StaticResource MutedText}" Margin="0,1,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Remove" Style="{StaticResource DangerButton}"
+                                                Padding="12,6" Tag="{Binding Id}" VerticalAlignment="Center"
+                                                Click="RemovePhone_Click" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="PhonesEmpty" Text="No phones linked yet."
+                               Style="{StaticResource MutedText}" Visibility="Collapsed" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- away -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Away mode" Style="{StaticResource H2}" />
+                    <TextBlock Text="What happens when you arm Sentinel before walking away."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <CheckBox x:Name="ScreensaverCheck" Tag="screensaver" Margin="0,12,0,0"
+                              Content="Trigger my Windows screensaver" Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <WrapPanel Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,8,24,0">
+                            <TextBlock Text="Lock workstation after" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox x:Name="LockAfterBox" Tag="lockafter" Width="64" Margin="8,0" Padding="8,5"
+                                     TextAlignment="Center" LostFocus="Number_LostFocus" />
+                            <TextBlock Text="seconds (0 = never)" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource Muted}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <CheckBox x:Name="AutoShotsCheck" Tag="autoshots" Content="Periodic screenshots while away"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <WrapPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,24,0">
+                            <TextBlock Text="Every" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox x:Name="AwayShotMinBox" Tag="awayshotmin" Width="56" Margin="8,0,4,0" Padding="8,5"
+                                     TextAlignment="Center" LostFocus="Number_LostFocus" />
+                            <TextBlock Text="to" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource Muted}" />
+                            <TextBox x:Name="AwayShotMaxBox" Tag="awayshotmax" Width="56" Margin="8,0,4,0" Padding="8,5"
+                                     TextAlignment="Center" LostFocus="Number_LostFocus" />
+                            <TextBlock Text="seconds (random)" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource Muted}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <CheckBox x:Name="ActivityShotsCheck" Tag="activityshots"
+                              Content="Take an extra screenshot when the PC is being used"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="MonitorAwayCheck" Tag="monitoraway"
+                              Content="Only log window/app activity while away mode is active"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="AutoIdleCheck" Tag="autoidle" Content="Arm away mode automatically when idle"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <WrapPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,24,0">
+                            <TextBlock Text="Idle threshold" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox x:Name="AutoIdleBox" Tag="autoidle" Width="64" Margin="8,0" Padding="8,5"
+                                     TextAlignment="Center" LostFocus="Number_LostFocus" />
+                            <TextBlock Text="minutes" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource Muted}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <CheckBox x:Name="AutoPhoneCheck" Tag="autophone"
+                              Content="Arm away mode when my trusted phone disconnects (direct link)"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                </StackPanel>
+            </Border>
+
+            <!-- power actions -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Power actions" Style="{StaticResource H2}" />
+                    <TextBlock Text="How this PC handles shutdown and restart requests from your phone."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <RadioButton x:Name="PowerSilent" Tag="silent" GroupName="PowerMode" Margin="0,12,0,0"
+                                 Foreground="{StaticResource Text}" FontSize="13"
+                                 Content="Silent — run it immediately" Checked="PowerMode_Changed" />
+                    <RadioButton x:Name="PowerNotify" Tag="notify" GroupName="PowerMode" Margin="0,8,0,0"
+                                 Foreground="{StaticResource Text}" FontSize="13"
+                                 Content="Notify — show a message, then run it" Checked="PowerMode_Changed" />
+                    <RadioButton x:Name="PowerConfirm" Tag="confirm" GroupName="PowerMode" Margin="0,8,0,0"
+                                 Foreground="{StaticResource Text}" FontSize="13"
+                                 Content="Confirm — allow or deny at the PC (30 s auto-deny)" Checked="PowerMode_Changed" />
+                    <TextBlock Text="Popup / confirmation text" Style="{StaticResource MutedText}" Margin="0,14,0,5" />
+                    <TextBox x:Name="PowerMessageBox" Padding="10,8" LostFocus="PowerMessage_LostFocus" />
+                    <TextBlock Text="Use {action} where the verb should go, e.g. “Your phone asked to {action} this PC.”"
+                               Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    <WrapPanel Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Message popup closes after" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox x:Name="PopupSecondsBox" Tag="popupseconds" Width="56" Margin="8,0,4,0"
+                                     Padding="8,5" TextAlignment="Center" LostFocus="Number_LostFocus" />
+                            <TextBlock Text="seconds" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource Muted}" />
+                        </StackPanel>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- capture -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Activity capture" Style="{StaticResource H2}" />
+                    <TextBlock Text="What Sentinel records while it is monitoring."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <CheckBox x:Name="ClipboardCheck" Tag="clipboard" Content="Clipboard text previews"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="UsbCheck" Tag="usb" Content="USB device connect / disconnect"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="ProcessCheck" Tag="process" Content="Process launches"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="MouseCheck" Tag="mouse" Content="Mouse clicks and movement"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="KeyboardCheck" Tag="keys" Content="Keystrokes (may include sensitive text)"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="NetworkCheck" Tag="network" Content="Outbound network connections"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="SearchCheck" Tag="search" Content="Browser searches from window titles"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                </StackPanel>
+            </Border>
+
+            <!-- direct link -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Direct link (ADB)" Style="{StaticResource H2}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="Phone-to-PC link without the relay. Connect by USB or wireless debugging; Sentinel runs adb reverse so the app can reach the agent at 127.0.0.1." />
+                    <CheckBox x:Name="AdbCheck" Tag="adb" Content="Enable direct link" Margin="0,12,0,0"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AdbPathBox" Padding="10,7" LostFocus="AdbPath_LostFocus" />
+                        <Button Grid.Column="1" Content="Browse" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="BrowseAdb_Click" />
+                        <Button Grid.Column="2" Content="Refresh" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="RefreshAdb_Click" />
+                    </Grid>
+                    <WrapPanel Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                            <TextBlock Text="Local port" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox x:Name="LocalPortBox" Tag="localport" Width="70" Margin="8,0" Padding="8,5"
+                                     TextAlignment="Center" LostFocus="Number_LostFocus" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Pairing code" VerticalAlignment="Center" FontSize="12" />
+                            <Border Background="#0E1218" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                    CornerRadius="8" Padding="12,4" Margin="8,0,0,0">
+                                <TextBlock x:Name="DirectCodeText" FontFamily="Consolas" FontSize="16"
+                                           FontWeight="SemiBold" Foreground="{StaticResource Accent}" />
+                            </Border>
+                            <Button Content="New code" Style="{StaticResource GhostButton}" Padding="12,6"
+                                    Margin="8,0,0,0" Click="NewCode_Click" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <TextBlock x:Name="DirectStatusText" Style="{StaticResource MutedText}" Margin="0,10,0,0"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="AdbDevicesText" Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AdbEndpointBox" Padding="10,7" />
+                        <Button Grid.Column="1" Content="Connect" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="ConnectAdb_Click" />
+                    </Grid>
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AdbPairEndpointBox" Padding="10,7" />
+                        <TextBox x:Name="AdbPairCodeBox" Grid.Column="1" Margin="8,0" Padding="10,7" />
+                        <Button Grid.Column="2" Content="Wireless pair" Style="{StaticResource GhostButton}"
+                                Padding="12,7" Click="PairAdb_Click" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- security -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Security" Style="{StaticResource H2}" />
+                    <CheckBox x:Name="PresenceCheck" Tag="presence"
+                              Content="Require my trusted phone (ADB) to be connected before disarming"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="ProtectPowerCheck" Tag="protectpower"
+                              Content="Require a 2FA code for remote shutdown / restart"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="InsecureCheck" Tag="insecure"
+                              Content="Accept self-signed HTTPS certificates (home server)"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <Border Style="{StaticResource Divider}" />
+                    <TextBlock Text="Two-factor secret" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="Shared with your phone. Any TOTP app works — phone, Yubico Authenticator or a Flipper Zero."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#0E1218" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                CornerRadius="8" Padding="10,7">
+                            <TextBlock x:Name="SecretText" FontFamily="Consolas" FontSize="12" TextTrimming="CharacterEllipsis" />
+                        </Border>
+                        <Button Grid.Column="1" Content="Reveal" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="Reveal_Click" />
+                        <Button Grid.Column="2" Content="Copy" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="CopySecret_Click" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- system -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Windows behaviour" Style="{StaticResource H2}" />
+                    <CheckBox x:Name="StartupCheck" Tag="startup" Content="Start with Windows"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="TrayCheck" Tag="tray" Content="Close button minimizes to the tray"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <CheckBox x:Name="BalloonCheck" Tag="balloon" Content="Show tray notifications"
+                              Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
+                    <Border Style="{StaticResource Divider}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Open data folder" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Click="OpenFolder_Click" />
+                        <Button Content="Open logs" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="OpenLogs_Click" />
+                        <Button Content="Test alarm" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="TestAlarm_Click" />
+                    </StackPanel>
+                    <TextBlock Text="Sentinel agent 1.2.4 · protocol v1.1" Style="{StaticResource MutedText}"
+                               Margin="0,12,0,0" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

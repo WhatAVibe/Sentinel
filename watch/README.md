@@ -1,0 +1,80 @@
+# Sentinel Watch (Wear OS)
+
+Standalone Wear OS app: status, Lock, Secure lock, Away/Disarm, Unlock screen, Screenshot, Ring,
+a live 2FA code, and **four tiles** including a configurable all-in-one dashboard.
+
+## Tiles
+
+After installing, open the watch's tile carousel, scroll to **Add tiles**, and add what you want:
+
+| Tile | What it shows | Buttons |
+|---|---|---|
+| **Sentinel dashboard** | configurable stack: PC name, status, 2FA code, countdown, action buttons | your selection |
+| **Sentinel status** | PC name, online/away/secure state, current 2FA code + seconds | Lock, Unlock |
+| **Sentinel actions** | the same action buttons as the dashboard, without status | your selection |
+| **Sentinel code** | large 2FA code and refresh countdown | - |
+
+Every tile also has an **Open Sentinel** button that opens the app.
+
+### Dashboard layout
+
+Open **Settings -> Tile layout** to choose what the all-in-one tile stacks:
+
+- PC name
+- status (Online / Offline / Away / Secure lock)
+- 2FA code
+- countdown
+- any of the action buttons: Lock, Unlock, Away, Secure, Shot, Ring
+
+Changes are saved immediately and the tiles are refreshed. Order is fixed: name, status, code,
+countdown, then buttons in the order above.
+
+Tiles cannot perform network calls on tap. A button launches the app with an action extra, and the
+app performs the command and returns to the carousel, still one tap from the tile. The 2FA code is
+computed when the tile is built; `setFreshnessIntervalMillis(30s)` asks the launcher to refresh, but
+the launcher decides how often, so the code can be a few seconds stale. Open the app (or the code
+tile) for the live code.
+
+## Build
+
+Requirements: JDK 17+, Android SDK 36. Create `local.properties`:
+
+```properties
+sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
+```
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+# app\build\outputs\apk\debug\app-debug.apk
+```
+
+The project uses AGP 9.1 / Kotlin 2.4 with `android.newDsl=false` and
+`android.builtInKotlin=false`, matching the Flutter toolchain.
+
+## Install
+
+On the watch: Developer options -> Wireless debugging -> Pair device with pairing code.
+
+```powershell
+adb pair <watch-ip>:<pair-port> <code>
+adb connect <watch-ip>:<port>
+adb -s <watch-ip>:<port> install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+Keep the watch on the charger with wireless debugging open; Wi-Fi sleeps and the device goes
+`offline` otherwise. Use `-s` because the phone is usually connected too.
+
+## Pair
+
+1. PC -> Settings -> Pair another phone (shows a 6-character code).
+2. Watch -> enter your relay URL (for example `https://sentinel.example.com`) and the code.
+3. The watch appears in Linked phones as "Watch".
+
+The watch stores its token and TOTP secret in app-private storage. Protect it with the watch's
+screen lock; remove it from Linked phones if lost.
+
+## Notes
+
+Tile services must override both `onTileResourcesRequest` and `onResourcesRequest`. Without them the
+host throws `UnsupportedOperationException: onTileResourcesRequest not implemented` and renders a
+blank tile. Previews come from `@drawable/tile_preview`.

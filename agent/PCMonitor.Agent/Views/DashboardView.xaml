@@ -1,0 +1,206 @@
+<UserControl x:Class="PCMonitor.Agent.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel Margin="26,22,18,24">
+
+            <Grid Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="Dashboard" Style="{StaticResource H1}" />
+                    <TextBlock Text="Remote control and live status" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Style="{StaticResource Pill}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="{Binding ConnectionBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Connection}" FontSize="11" Margin="7,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="Refresh" Style="{StaticResource GhostButton}" Padding="14,8" Click="Refresh_Click" />
+                </StackPanel>
+            </Grid>
+
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="270" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding DeviceName}" FontSize="21" FontWeight="SemiBold" />
+                            <Border Style="{StaticResource Pill}" Margin="10,0,0,0" Background="#10251C" BorderBrush="#1E4434">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="{StaticResource Success}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Connection}" FontSize="10" Margin="6,0,0,0"
+                                               Foreground="{StaticResource Success}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Margin="0,7,0,0" Style="{StaticResource MutedText}">
+                            <Run Text="{Binding UserName}" /><Run Text=" · " /><Run Text="{Binding Hostname}" />
+                        </TextBlock>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                            <Border Style="{StaticResource InnerCard}" Padding="12,9" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <TextBlock Text="Displays" FontSize="10" Foreground="{StaticResource Muted}" />
+                                    <TextBlock Text="{Binding Monitors}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCard}" Padding="12,9" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <TextBlock Text="Session" FontSize="10" Foreground="{StaticResource Muted}" />
+                                    <TextBlock Text="{Binding Session}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCard}" Padding="12,9" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <TextBlock Text="Uptime" FontSize="10" Foreground="{StaticResource Muted}" />
+                                    <TextBlock Text="{Binding UptimeText}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCard}" Padding="12,9">
+                                <StackPanel>
+                                    <TextBlock Text="Last beat" FontSize="10" Foreground="{StaticResource Muted}" />
+                                    <TextBlock Text="{Binding LastSeen}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Grid Margin="0,0,0,4">
+                            <TextBlock Text="CPU" FontSize="11" Foreground="{StaticResource Muted}" />
+                            <TextBlock Text="{Binding CpuText}" FontSize="11" HorizontalAlignment="Right" />
+                        </Grid>
+                        <ProgressBar Value="{Binding Cpu}" Maximum="100" />
+                        <Grid Margin="0,14,0,4">
+                            <TextBlock Text="Memory" FontSize="11" Foreground="{StaticResource Muted}" />
+                            <TextBlock Text="{Binding MemText}" FontSize="11" HorizontalAlignment="Right"
+                                       Foreground="{StaticResource Muted}" />
+                        </Grid>
+                        <ProgressBar Value="{Binding MemPercent}" Maximum="100" Foreground="{StaticResource Success}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Background="#241E12" BorderBrush="#4A3A1E" BorderThickness="1" CornerRadius="16"
+                    Padding="18,14" Margin="0,12,0,0" Visibility="{Binding AwayVisibility}">
+                <Grid>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE708;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource Warning}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock Text="Away mode active" Foreground="{StaticResource Warning}" FontWeight="SemiBold"
+                                       FontSize="14" />
+                        </StackPanel>
+                        <TextBlock Text="Screensaver engaged · activity capture running · disarm requires a 2FA code"
+                                   Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <Button Content="Disarm…" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Padding="16,9" Click="Disarm_Click" />
+                </Grid>
+            </Border>
+
+            <Border Background="#1A1620" BorderBrush="#3A2B44" BorderThickness="1" CornerRadius="16"
+                    Padding="18,14" Margin="0,12,0,0" Visibility="{Binding NotPairedVisibility}">
+                <Grid>
+                    <StackPanel>
+                        <TextBlock Text="This PC is not paired" FontWeight="SemiBold" FontSize="14" />
+                        <TextBlock Text="Pair with the Sentinel app to enable remote control and activity logging."
+                                   Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <Button Content="Pair now" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Click="Pair_Click" />
+                </Grid>
+            </Border>
+
+            <Grid Margin="0,22,0,12">
+                <TextBlock Text="Quick actions" Style="{StaticResource H2}" />
+                <TextBlock Text="Actions run immediately on this PC" Style="{StaticResource MutedText}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+
+            <UniformGrid Columns="4" Rows="2">
+                <Button Style="{StaticResource ActionTile}" Tag="lock" Click="Action_Click" Margin="0,0,10,10">
+                    <StackPanel>
+                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Accent}" />
+                        <TextBlock Text="Lock PC" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Engage workstation lock" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="screenshot" Click="Action_Click" Margin="0,0,10,10">
+                    <StackPanel>
+                        <TextBlock Text="&#xE722;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Accent}" />
+                        <TextBlock Text="Screenshot" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Capture every display" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="away" Click="Action_Click" Margin="0,0,10,10">
+                    <StackPanel>
+                        <TextBlock Text="&#xE708;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Warning}" />
+                        <TextBlock Text="Away mode" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Screensaver + logging" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="screenoff" Click="Action_Click" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Accent}" />
+                        <TextBlock Text="Display off" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Turn monitors off" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="disarm" Click="Action_Click" Margin="0,0,10,0"
+                        Visibility="{Binding AwayVisibility}">
+                    <StackPanel>
+                        <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Success}" />
+                        <TextBlock Text="Unlock / disable" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Requires 2FA code" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="screenon" Click="Action_Click" Margin="0,0,10,0"
+                        Visibility="{Binding AwayVisibility}">
+                    <StackPanel>
+                        <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Success}" />
+                        <TextBlock Text="Display on" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="Wake the monitors" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="restart" Click="Action_Click" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Warning}" />
+                        <TextBlock Text="Restart" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="10 second delay" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ActionTile}" Tag="shutdown" Click="Action_Click">
+                    <StackPanel>
+                        <TextBlock Text="&#xE7E8;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Danger}" />
+                        <TextBlock Text="Shut down" Margin="0,9,0,0" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="10 second delay" FontSize="10" Foreground="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Button>
+            </UniformGrid>
+
+            <Grid Margin="0,24,0,10">
+                <TextBlock Text="Recent activity" Style="{StaticResource H2}" />
+                <Button Content="View all" Style="{StaticResource GhostButton}" Padding="12,6" HorizontalAlignment="Right"
+                        Click="ViewAll_Click" />
+            </Grid>
+
+            <Border Style="{StaticResource Card}" Padding="16,10">
+                <Grid>
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Activity}" />
+                    </ScrollViewer>
+                    <TextBlock Text="Nothing logged yet — arm away mode, take a screenshot, or unlock the PC."
+                               Style="{StaticResource MutedText}" Margin="4,16,4,18"
+                               Visibility="{Binding EmptyActivityVisibility}" />
+                </Grid>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
