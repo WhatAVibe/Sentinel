@@ -34,7 +34,7 @@ class Config:
         self.storage_dir = storage
         self.shots_dir = storage / "shots"
         self.db_path = storage / "sentinel.db"
-        self.version = "1.2.3"
+        self.version = "1.2.4"
 
     @classmethod
     def load(cls, path: str | os.PathLike) -> "Config":

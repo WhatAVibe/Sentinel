@@ -123,7 +123,15 @@ def mobile_required(fn):
         g.device = mobile["device"]
         g.device_id = mobile["device"]["id"]
         g.actor = f"mobile:{mobile['id'][:8]}"
-        db().execute("UPDATE mobiles SET last_seen = ? WHERE id = ?", (now_ms(), mobile["id"]))
+        name = (request.headers.get("X-Device-Name") or "").strip()[:64]
+        if name and name != (mobile.get("name") or ""):
+            db().execute(
+                "UPDATE mobiles SET last_seen=?, name=? WHERE id=?",
+                (now_ms(), name, mobile["id"]),
+            )
+            mobile["name"] = name
+        else:
+            db().execute("UPDATE mobiles SET last_seen = ? WHERE id = ?", (now_ms(), mobile["id"]))
         return fn(*args, **kwargs)
 
     return wrapper
@@ -798,6 +806,14 @@ def me():
     )
 
 
+@bp.delete("/me")
+@mobile_required
+def remove_me():
+    db().execute("DELETE FROM mobiles WHERE id=?", (g.mobile["id"],))
+    db().audit("mobile", "mobile.removed", {"mobile": g.mobile["id"], "device": g.device_id})
+    return jsonify(ok=True)
+
+
 @bp.get("/devices")
 @mobile_required
 def list_devices():
@@ -939,17 +955,23 @@ def list_commands(did):
 @mobile_required
 def list_events(did):
     since = int(request.args.get("since", 0))
+    before = int(request.args.get("before", 0))
     limit = min(int(request.args.get("limit", 100)), 500)
     category = request.args.get("category")
     sql = "SELECT * FROM events WHERE device_id=? AND id > ?"
     params = [did, since]
+    if before > 0:
+        sql += " AND id < ?"
+        params.append(before)
     if category and category != "all":
         sql += " AND category=?"
         params.append(category)
     sql += " ORDER BY id DESC LIMIT ?"
-    params.append(limit)
+    params.append(limit + 1)
     rows = db().all(sql, tuple(params))
-    return jsonify(events=[serialize_event(r) for r in rows][::-1])
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    return jsonify(events=[serialize_event(r) for r in rows][::-1], has_more=has_more)
 
 
 @bp.get("/devices/<did>/audit")
@@ -1098,10 +1120,18 @@ def message_reply(mid):
 @mobile_required
 def list_shots(did):
     limit = min(int(request.args.get("limit", 60)), 200)
-    rows = db().all(
-        "SELECT * FROM screenshots WHERE device_id=? ORDER BY ts DESC LIMIT ?", (did, limit)
-    )
-    return jsonify(screenshots=[serialize_shot(r) for r in rows])
+    before = int(request.args.get("before", 0))
+    sql = "SELECT * FROM screenshots WHERE device_id=?"
+    params = [did]
+    if before > 0:
+        sql += " AND ts < ?"
+        params.append(before)
+    sql += " ORDER BY ts DESC LIMIT ?"
+    params.append(limit + 1)
+    rows = db().all(sql, tuple(params))
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    return jsonify(screenshots=[serialize_shot(r) for r in rows], has_more=has_more)
 
 
 @bp.get("/devices/<did>/screenshots/<sid>/file")
