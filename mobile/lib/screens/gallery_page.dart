@@ -69,8 +69,29 @@ class GalleryPage extends StatelessWidget {
                       crossAxisSpacing: 10,
                       childAspectRatio: 0.82,
                     ),
-                    itemCount: shots.length,
+                    itemCount: shots.length + (state.shotsHasMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index >= shots.length) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: C.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: C.border),
+                          ),
+                          alignment: Alignment.center,
+                          child: TextButton.icon(
+                            onPressed: state.shotsLoadingOlder ? null : state.loadOlderShots,
+                            icon: state.shotsLoadingOlder
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.history_rounded, size: 16),
+                            label: Text(state.shotsLoadingOlder ? 'Loading…' : 'Load older'),
+                          ),
+                        );
+                      }
                       final shot = shots[index];
                       return _ShotCard(shot: shot, state: state);
                     },

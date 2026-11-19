@@ -18,6 +18,7 @@ class _ActivityPageState extends State<ActivityPage> {
   String _filter = 'all';
   bool _searching = false;
   bool _grouped = false;
+  bool _newestFirst = true;
 
   static const _filters = [
     ('all', 'All'),
@@ -74,12 +75,13 @@ class _ActivityPageState extends State<ActivityPage> {
 
   List<ActivityEvent> _filtered(AppState state) {
     final query = _search.text.trim().toLowerCase();
-    return state.events.where((event) {
+    final list = state.events.where((event) {
       if (!_matches(event)) return false;
       if (query.isEmpty) return true;
       return event.title.toLowerCase().contains(query) ||
           event.detailText.toLowerCase().contains(query);
-    }).take(300).toList();
+    }).toList();
+    return _newestFirst ? list : list.reversed.toList();
   }
 
   int _countFor(AppState state, String key) {
@@ -135,6 +137,15 @@ class _ActivityPageState extends State<ActivityPage> {
                     else
                       const Pill('POLLING', color: C.muted),
                     const SizedBox(width: 6),
+                    IconButton(
+                      tooltip: _newestFirst ? 'Newest first' : 'Oldest first',
+                      onPressed: () => setState(() => _newestFirst = !_newestFirst),
+                      icon: Icon(
+                        _newestFirst ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                        size: 18,
+                        color: C.muted,
+                      ),
+                    ),
                     IconButton(
                       tooltip: _grouped ? 'Timeline' : 'Group by category',
                       onPressed: () => setState(() => _grouped = !_grouped),
@@ -201,10 +212,14 @@ class _ActivityPageState extends State<ActivityPage> {
                       backgroundColor: C.surface,
                       child: ListView.builder(
                         padding: const EdgeInsets.fromLTRB(12, 8, 16, 24),
-                        itemCount: events.length,
+                        itemCount: events.length + (state.eventsHasMore ? 1 : 0),
                         itemBuilder: (context, index) {
-                          final event = events[index];
-                          final previous = index == 0 ? null : events[index - 1];
+                          final olderAtTop = state.eventsHasMore && !_newestFirst;
+                          if (olderAtTop && index == 0) return _olderButton(state);
+                          final eventIndex = olderAtTop ? index - 1 : index;
+                          if (eventIndex >= events.length) return _olderButton(state);
+                          final event = events[eventIndex];
+                          final previous = eventIndex == 0 ? null : events[eventIndex - 1];
                           final showHeader =
                               previous == null || !_sameDay(previous.time, event.time);
                           return Column(
@@ -212,7 +227,7 @@ class _ActivityPageState extends State<ActivityPage> {
                             children: [
                               if (showHeader)
                                 Padding(
-                                  padding: EdgeInsets.fromLTRB(8, index == 0 ? 6 : 18, 0, 6),
+                                  padding: EdgeInsets.fromLTRB(8, eventIndex == 0 ? 6 : 18, 0, 6),
                                   child: Text(
                                     _dayLabel(event.time),
                                     style: const TextStyle(
@@ -240,6 +255,23 @@ class _ActivityPageState extends State<ActivityPage> {
                     ),
         ),
       ],
+    );
+  }
+
+  Widget _olderButton(AppState state) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
+      child: OutlinedButton.icon(
+        onPressed: state.eventsLoadingOlder ? null : state.loadOlderEvents,
+        icon: state.eventsLoadingOlder
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.history_rounded, size: 16),
+        label: Text(state.eventsLoadingOlder ? 'Loading older events…' : 'Load older events'),
+      ),
     );
   }
 

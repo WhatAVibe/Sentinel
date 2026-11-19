@@ -87,6 +87,31 @@ class _SecurityPageState extends State<SecurityPage> {
     });
   }
 
+  void _showPresenceHelp(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: C.surface,
+        title: const Text('Link ADB presence', style: TextStyle(fontSize: 16)),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Presence is a direct ADB link between this phone and the PC. Relay pairing alone does not '
+            'count.\n\n'
+            '1. Phone: Settings → About phone → tap Build number seven times.\n'
+            '2. Developer options → Wireless debugging → Pair device with pairing code.\n'
+            '3. PC: Sentinel → Settings → Direct link → Enable, then enter the ip:port and code.\n'
+            '4. Keep wireless debugging on; this screen will show "linked".\n\n'
+            'Only required when the PC security policy requires a trusted phone to disarm.',
+            style: TextStyle(fontSize: 12, height: 1.4),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Got it')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _disarm() async {
     final code = await showCodeSheet(
       context,
@@ -363,7 +388,25 @@ class _SecurityPageState extends State<SecurityPage> {
                         .toString()
                         .substring(0, 16),
               ),
-              _InfoRow(label: 'Presence', value: device?.state.phonePresent == true ? 'phone linked' : 'not linked'),
+              _InfoRow(
+                label: 'ADB presence',
+                value: device?.state.phonePresent == true ? 'linked' : 'not linked',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                device?.state.phonePresent == true
+                    ? 'This PC can see the phone over ADB. It can require that link before disarming.'
+                    : 'Presence means a direct ADB link (USB or wireless debugging), not relay pairing. '
+                        'Only needed if the PC policy requires a trusted phone.',
+                style: const TextStyle(fontSize: 10.5, color: C.muted),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _showPresenceHelp(context),
+                  child: const Text('How to link', style: TextStyle(fontSize: 11)),
+                ),
+              ),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
