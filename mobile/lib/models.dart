@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:flutter/services.dart';
+
 int asInt(dynamic value, [int fallback = 0]) {
   if (value is int) return value;
   if (value is num) return value.toInt();
@@ -268,6 +270,7 @@ class Session {
   final String label;
   final int pairedAt;
   final String uid;
+  final String localName;
 
   const Session({
     required this.baseUrl,
@@ -279,9 +282,12 @@ class Session {
     required this.label,
     required this.pairedAt,
     this.uid = '',
+    this.localName = '',
   });
 
   bool get isDirect => mode == 'direct';
+
+  String get displayName => localName.isNotEmpty ? localName : deviceName;
 
   Map<String, dynamic> toJson() => {
         'base_url': baseUrl,
@@ -293,6 +299,7 @@ class Session {
         'label': label,
         'paired_at': pairedAt,
         'uid': uid,
+        'local_name': localName,
       };
 
   factory Session.fromJson(Map<String, dynamic> json) => Session(
@@ -305,6 +312,7 @@ class Session {
         label: asString(json['label'], 'Sentinel'),
         pairedAt: asInt(json['paired_at']),
         uid: asString(json['uid']),
+        localName: asString(json['local_name']),
       );
 
   Session withBaseUrl(String value) => Session(
@@ -317,6 +325,7 @@ class Session {
         label: label,
         pairedAt: pairedAt,
         uid: uid,
+        localName: localName,
       );
 
   Session withUid(String value) => Session(
@@ -329,6 +338,20 @@ class Session {
         label: label,
         pairedAt: pairedAt,
         uid: value,
+        localName: localName,
+      );
+
+  Session withLocalName(String value) => Session(
+        baseUrl: baseUrl,
+        mode: mode,
+        token: token,
+        totpSecret: totpSecret,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        label: label,
+        pairedAt: pairedAt,
+        uid: uid,
+        localName: value,
       );
 }
 
@@ -365,6 +388,22 @@ String newMobileUid() {
   return bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
 }
 
+const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
+
+/// Human-readable model of this phone, reported to the relay so linked
+/// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
+String sentinelDeviceName = '';
+
+Future<void> loadDeviceName() async {
+  try {
+    final name = await _deviceChannel.invokeMethod<String>('name');
+    if (name != null && name.trim().isNotEmpty) sentinelDeviceName = name.trim();
+  } catch (_) {
+    // Not Android (or test environment); fall through.
+  }
+  if (sentinelDeviceName.isEmpty) sentinelDeviceName = 'Android phone';
+}
+
 class ApiError implements Exception {  final int status;
   final String code;
 
@@ -380,7 +419,7 @@ class ApiError implements Exception {  final int status;
       case 'unauthorized':
         return 'This phone is no longer authorized. Pair again.';
       case 'phone_not_present':
-        return 'Phone presence required — connect over ADB.';
+        return 'The PC requires an ADB presence link — enable Direct link and connect this phone.';
       case 'capture_busy':
         return 'A capture is already running.';
       case 'rate_limited':

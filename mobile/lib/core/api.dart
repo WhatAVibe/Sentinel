@@ -29,6 +29,7 @@ class _Http {
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
         if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
+        if (sentinelDeviceName.isNotEmpty) 'X-Device-Name': sentinelDeviceName,
       };
 
   Uri uri(String path) => Uri.parse('$baseUrl$path');
@@ -95,8 +96,8 @@ abstract class SentinelClient {
   bool get isDirect;
   Stream<PushEvent> get stream;
   Future<Device> fetchDevice();
-  Future<List<ActivityEvent>> fetchEvents({int since = 0, int limit = 200});
-  Future<List<Shot>> fetchScreenshots();
+  Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200});
+  Future<List<Shot>> fetchScreenshots({int beforeTs = 0, int limit = 120});
   Future<CommandResult> sendCommand(String type, {Map<String, dynamic>? args, String? code});
   Future<CommandResult> sendMessage({
     required String body,
@@ -220,16 +221,18 @@ class RelayClient implements SentinelClient {
   }
 
   @override
-  Future<List<ActivityEvent>> fetchEvents({int since = 0, int limit = 200}) async {
-    final body = await _api.get('/api/v1/devices/$_deviceId/events?since=$since&limit=$limit');
+  Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200}) async {
+    final older = before > 0 ? '&before=$before' : '';
+    final body = await _api.get('/api/v1/devices/$_deviceId/events?since=$since&limit=$limit$older');
     return (body['events'] as List? ?? const [])
         .map((e) => ActivityEvent.fromJson(asMap(e)))
         .toList();
   }
 
   @override
-  Future<List<Shot>> fetchScreenshots() async {
-    final body = await _api.get('/api/v1/devices/$_deviceId/screenshots?limit=120');
+  Future<List<Shot>> fetchScreenshots({int beforeTs = 0, int limit = 120}) async {
+    final older = beforeTs > 0 ? '&before=$beforeTs' : '';
+    final body = await _api.get('/api/v1/devices/$_deviceId/screenshots?limit=$limit$older');
     return (body['screenshots'] as List? ?? const []).map((e) => Shot.fromJson(asMap(e))).toList();
   }
 
@@ -296,7 +299,7 @@ class RelayClient implements SentinelClient {
 
   @override
   Future<void> removeDevice() async {
-    await _api.delete('/api/v1/devices/$_deviceId');
+    await _api.delete('/api/v1/me');
   }
 
   @override
@@ -360,13 +363,13 @@ class DirectClient implements SentinelClient {
   }
 
   @override
-  Future<List<ActivityEvent>> fetchEvents({int since = 0, int limit = 200}) async {
+  Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200}) async {
     final body = await _api.get('/local/events?since=$since&limit=$limit');
     return (body['events'] as List? ?? const []).map((e) => ActivityEvent.fromJson(asMap(e))).toList();
   }
 
   @override
-  Future<List<Shot>> fetchScreenshots() async {
+  Future<List<Shot>> fetchScreenshots({int beforeTs = 0, int limit = 120}) async {
     final body = await _api.get('/local/screenshots');
     return (body['screenshots'] as List? ?? const []).map((e) => Shot.fromJson(asMap(e))).toList();
   }
@@ -439,9 +442,10 @@ class Pairer {
     required String baseUrl,
     required String pairCode,
     String? requestId,
-    String mobileName = 'Sentinel',
+    String mobileName = '',
     String mobileUid = '',
   }) async {
+    final name = mobileName.trim().isEmpty ? sentinelDeviceName : mobileName.trim();
     final base = normalizeBaseUrl(baseUrl);
     if (base.isEmpty) throw const ApiError(400, 'bad_url');
     final uid = mobileUid.isEmpty ? newMobileUid() : mobileUid;
@@ -459,7 +463,7 @@ class Pairer {
       final body = await _post(client, base, '/api/v1/pair/approve', {
         'request_id': rid,
         'pair_code': pairCode,
-        'mobile_name': mobileName,
+        'mobile_name': name,
         'mobile_uid': uid,
       });
       final device = Device.fromJson(asMap(body['device']));
@@ -482,13 +486,14 @@ class Pairer {
   static Future<Session> pairDirect({
     required String baseUrl,
     required String pairCode,
-    String mobileName = 'Sentinel',
+    String mobileName = '',
   }) async {
     final base = normalizeBaseUrl(baseUrl);
     if (base.isEmpty) throw const ApiError(400, 'bad_url');
+    final name = mobileName.trim().isEmpty ? sentinelDeviceName : mobileName.trim();
     final client = http.Client();
     try {
-      final body = await _post(client, base, '/local/pair', {'code': pairCode, 'mobile_name': mobileName});
+      final body = await _post(client, base, '/local/pair', {'code': pairCode, 'mobile_name': name});
       return Session(
         baseUrl: base,
         mode: 'direct',

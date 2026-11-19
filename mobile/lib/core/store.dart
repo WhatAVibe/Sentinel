@@ -9,6 +9,8 @@ import '../models.dart';
 
 class SessionStore {
   static const _sessionKey = 'sentinel_session_v1';
+  static const _sessionsKey = 'sentinel_sessions_v2';
+  static const _activeKey = 'sentinel_active_device_v2';
   static const _pinKey = 'sentinel_pin_v1';
   static const _biometricKey = 'sentinel_biometric_enabled';
 
@@ -33,6 +35,52 @@ class SessionStore {
       _secure.write(key: _sessionKey, value: jsonEncode(session.toJson()));
 
   Future<void> clearSession() => _secure.delete(key: _sessionKey);
+
+  Future<List<Session>> loadSessions() async {
+    try {
+      final raw = await _secure.read(key: _sessionsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded
+              .whereType<Map>()
+              .map((e) => Session.fromJson(Map<String, dynamic>.from(e)))
+              .where((s) => s.deviceId.isNotEmpty && s.token.isNotEmpty)
+              .toList();
+        }
+      }
+      final legacy = await loadSession();
+      if (legacy != null) {
+        await saveSessions([legacy]);
+        await saveActiveId(legacy.deviceId);
+        return [legacy];
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveSessions(List<Session> sessions) => _secure.write(
+        key: _sessionsKey,
+        value: jsonEncode(sessions.map((s) => s.toJson()).toList()),
+      );
+
+  Future<String?> loadActiveId() => _secure.read(key: _activeKey);
+
+  Future<void> saveActiveId(String? deviceId) async {
+    if (deviceId == null || deviceId.isEmpty) {
+      await _secure.delete(key: _activeKey);
+    } else {
+      await _secure.write(key: _activeKey, value: deviceId);
+    }
+  }
+
+  Future<void> clearSessions() async {
+    await _secure.delete(key: _sessionsKey);
+    await _secure.delete(key: _activeKey);
+    await _secure.delete(key: _sessionKey);
+  }
 
   Future<bool> biometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
