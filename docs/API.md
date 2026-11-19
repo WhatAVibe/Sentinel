@@ -1,7 +1,8 @@
 # Relay API v1
 
 Base: `http://<host>:8765` · all JSON · timestamps are unix **milliseconds** · auth via
-`Authorization: Bearer <token>` (or `?token=` for image/WS URLs).
+`Authorization: Bearer <token>` (or `?token=` for image/WS URLs). Mobile clients may send
+`X-Device-Name: <model>`; the relay stores it as the linked phone's display name.
 
 Errors: HTTP 4xx/5xx with `{"error": "snake_case_code"}`.
 Common codes: `bad_code`, `too_many_attempts`, `not_found`, `expired`, `unauthorized`, `invalid_mobile_token`,
@@ -41,6 +42,7 @@ Pairing status transitions: `pending → approved → claimed` (agent fetched it
 | Method | Path | Body / Query | Notes |
 |---|---|---|---|
 | GET | `/api/v1/me` | — | `{mobile, device(+totp_secret), totp_secret, totp_seconds_remaining, server}` |
+| DELETE | `/api/v1/me` | — | remove this phone from the PC (keeps other phones) |
 | GET | `/api/v1/devices` | — | list (no secrets) |
 | GET | `/api/v1/devices/{id}` | — | detail + counts + secret |
 | PATCH | `/api/v1/devices/{id}` | `{name?, settings{require_2fa_unlock?, protect_power?}}` | |
@@ -54,8 +56,8 @@ Pairing status transitions: `pending → approved → claimed` (agent fetched it
 | POST | `/api/v1/devices/{id}/unlock` | `{code, action:"unlock"\|"away_disable"}` | |
 | GET | `/api/v1/devices/{id}/commands?…` | — | last 40 |
 | GET | `/api/v1/devices/{id}/commands/{cid}` | — | `{command}` |
-| GET | `/api/v1/devices/{id}/events?since=&limit=&category=` | — | ascending by id, max 500 |
-| GET | `/api/v1/devices/{id}/screenshots?limit=` | — | metadata + `url` |
+| GET | `/api/v1/devices/{id}/events?since=&before=&limit=&category=` | — | ascending batch + `has_more`; use `before=<oldest id>` for older pages, max 500 |
+| GET | `/api/v1/devices/{id}/screenshots?before=&limit=` | — | newest-first metadata + `has_more`; `before` is a `ts` |
 | GET | `/api/v1/devices/{id}/screenshots/{sid}/file` | — | PNG (`?token=` allowed) |
 | DELETE | `/api/v1/devices/{id}/screenshots/{sid}` | — | removes file + row |
 | POST | `/api/v1/totp/check` | `{code}` | `{ok, seconds_remaining}` |

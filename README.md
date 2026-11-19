@@ -111,6 +111,8 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **2FA everywhere** | TOTP gates unlock, disarm, secure-lock release, phone removal and agent exit |
 | **Secure lock** | Full-desktop 2FA lock that swallows shortcuts and input until the code is entered |
 | **Watchdog** | Detached supervisor relaunches the agent after an unauthorized kill |
+| **Multiple PCs** | Pair several PCs, switch between them, give each a local name |
+| **Server-side history** | Full event timeline and screenshot archive live on the relay, paged oldest-first |
 | **Power alerts** | "Went offline", "back online" with downtime, "restarted" on uptime reset |
 | **Activity log** | Windows, apps, network, searches, mouse/keyboard, clipboard, USB, sessions, security |
 | **Wear OS** | Quick actions, live code, and four tiles including a configurable all-in-one |
@@ -249,6 +251,8 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 2. Phone: **Scan QR**, or **Code** → enter the relay URL and the code.
 3. Approve on the PC. Both sides store tokens and share the TOTP secret.
 4. More phones later: PC → **Settings → Pair another phone**.
+5. More PCs later: tap the PC name at the top of the phone app → **Pair another PC**. Use the pencil icon
+   to give each one a local name.
 
 ### 5. Wear OS app (optional)
 
@@ -333,6 +337,10 @@ Away mode can record (each toggle is opt-in/configurable in **Settings → Activ
 
 Screenshots are stored on **your** relay under `storage/shots`. Set `retention_days` (default 30) to keep it
 small, and treat the relay's storage as sensitive. There is no cloud upload.
+
+The phone keeps the newest page in memory and pulls older pages from the relay with **Load older events**
+(and **Load older** in the gallery), so the timeline survives app restarts and works while the PC is off.
+Set `retention_days` to `0` if you want the relay to keep everything.
 
 ---
 
@@ -428,6 +436,8 @@ Sentinel/
 | 2FA code rejected | Phone/PC clock drift. Enable automatic time sync on both. |
 | A queued action fires after the PC restarts | Commands expire after `command_ttl_seconds` (120 s) and the agent discards anything from before it started. Update the relay to 1.2.3+ and the agent to 1.2.5+. |
 | Header shows **RELAY** but the PC is offline | They are separate indicators: RELAY means the app can reach the relay; the card shows PC ONLINE/OFFLINE. |
+| Older activity is missing | Scroll to the bottom and tap **Load older events** (or **Load older** in Shots). The relay also prunes data after `retention_days`; set it to `0` to keep everything. |
+| Linked phone shows a generic name | Phone/watch 1.2.3+/1.2.1+ report their model. Existing entries update on the next request or after re-pairing. |
 | `http_500` in bursts, server log says `Too many open files` | Relay hit its fd limit. Use server 1.2.2+ and set `LimitNOFILE=65536` in the systemd unit. |
 | Secure lock won't release | Use the code on the overlay or the phone. Ctrl+Alt+Del opens Windows security; the lock returns. |
 | Screenshots are black | Display off, UAC/secure desktop, or protected content. Wake the display first. |
@@ -459,6 +469,17 @@ A phone pairs with one PC at a time; a PC can have several phones. Run one relay
 
 **Where is my data?**
 On your relay (`server/storage`) and on your devices. Nothing is sent anywhere else unless you configure ntfy.
+Events and screenshots are stored server-side, so the PC can be off while you browse history. The app loads
+the newest page and pulls older pages on demand; `retention_days` controls how long the relay keeps them.
+
+**Can I control several PCs from one phone?**
+Yes. Tap the PC name in the app bar → **Pair another PC**. Each PC keeps its own token and TOTP secret on the
+phone. Switch between them from the same sheet, and set a local name with the pencil icon. Unpairing removes
+only that phone from that PC; other PCs stay linked.
+
+**What does "ADB presence" mean?**
+It is a direct ADB link (USB or wireless debugging) between this phone and the PC — not relay pairing. It is
+only needed when the PC policy requires a trusted phone to disarm. Security → **How to link** shows the steps.
 
 **Why does the app show RELAY while the PC is offline?**
 They describe different things. The header pill is the app ↔ relay connection; the device card is the
@@ -492,9 +513,9 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 | Component | Version | Stack |
 |---|---|---|
 | Windows agent | 1.2.5 | C# / .NET 10 WPF |
-| Relay server | 1.2.3 | Python / Flask / SQLite |
-| Phone app | 1.2.2 (build 7) | Flutter |
-| Wear OS app | 1.2.0 | Kotlin / Compose / Tiles |
+| Relay server | 1.2.4 | Python / Flask / SQLite |
+| Phone app | 1.2.3 (build 8) | Flutter |
+| Wear OS app | 1.2.1 | Kotlin / Compose / Tiles |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,
 `watch/app/build.gradle.kts`) and keep the docs in sync.

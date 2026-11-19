@@ -212,6 +212,16 @@ SQLite tables: `devices`, `mobiles`, `pair_requests`, `commands`, `events`, `scr
 Retention runs hourly: old events/screenshots/audit rows and their files are deleted according to
 `retention_days`.
 
+## Phone storage and multiple PCs
+
+The phone keeps a list of paired PCs in secure storage, each with its own token and TOTP secret, plus the
+active device id. Switching PCs attaches a fresh client; local names are phone-only aliases and never leave
+the device. Unpairing calls `DELETE /me`, which revokes only that phone, not the PC or other phones.
+
+Activity and screenshots are relay-side data. The app loads the newest page (`200` events, `120` shots) and
+requests older pages with `before`; `has_more` tells it whether to keep the button visible. The PC can be
+offline the whole time.
+
 ## Configuration
 
 **Server** — `server/config.json` (auto-created).
@@ -241,5 +251,5 @@ Retention runs hourly: old events/screenshots/audit rows and their files are del
 
 ## Versioning
 
-Agent 1.2.5 · server 1.2.3 · app 1.2.2 · watch 1.2.0 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 1.2.5 · server 1.2.4 · app 1.2.3 · watch 1.2.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.
