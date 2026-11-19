@@ -48,11 +48,14 @@ class _PairScreenState extends State<PairScreen> {
 
   Future<void> _finish(Session session) async {
     final state = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     await state.attach(session);
     state.unlockApp();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Paired with ${session.deviceName}')),
+    if (navigator.canPop()) navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text('Paired with ${session.displayName}')),
     );
   }
 
