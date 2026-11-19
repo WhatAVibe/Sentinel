@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../core/api.dart';
 import '../core/app_state.dart';
 import '../core/diagnostics.dart';
+import '../core/flipper_bridge.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'flipper_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -124,6 +126,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final flipper = context.watch<FlipperBridge>();
     final session = state.session;
 
     return Scaffold(
@@ -210,6 +213,48 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          const SectionHeader('Flipper'),
+          CardBox(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.watch_rounded,
+                  size: 20,
+                  color: flipper.connected ? C.success : C.muted,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        flipper.connected
+                            ? 'Linked to this phone'
+                            : (flipper.connecting || flipper.reconnecting
+                                ? 'Reconnecting…'
+                                : 'Bluetooth bridge'),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        flipper.connected || flipper.connecting || flipper.reconnecting
+                            ? (flipper.statusText ?? 'Flipper connected')
+                            : 'Control Sentinel from the Flipper without a WiFi board',
+                        style: const TextStyle(fontSize: 10.5, color: C.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const FlipperPage()),
+                  ),
+                  child: Text(flipper.connected ? 'Manage' : 'Set up',
+                      style: const TextStyle(fontSize: 11)),
+                ),
+              ],
+            ),
+          ),
           const SectionHeader('Linked phones'),
           const PhonesCard(),
           const SectionHeader('App lock'),
@@ -271,7 +316,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.2.3'),
+                const _Line('App', 'Sentinel 1.2.5'),
                 const _Line('Relay protocol', 'v1.1'),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'

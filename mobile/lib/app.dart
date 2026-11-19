@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'core/app_state.dart';
+import 'core/flipper_bridge.dart';
 import 'screens/lock_screen.dart';
 import 'screens/pair_screen.dart';
 import 'screens/shell.dart';
@@ -17,6 +17,7 @@ class SentinelApp extends StatefulWidget {
 
 class _SentinelAppState extends State<SentinelApp> with WidgetsBindingObserver {
   final AppState _state = AppState();
+  late final FlipperBridge _flipper = FlipperBridge(() => _state.session);
   DateTime? _backgroundedAt;
 
   @override
@@ -29,6 +30,7 @@ class _SentinelAppState extends State<SentinelApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _flipper.dispose();
     _state.dispose();
     super.dispose();
   }
@@ -54,8 +56,11 @@ class _SentinelAppState extends State<SentinelApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AppState>.value(
-      value: _state,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppState>.value(value: _state),
+        ChangeNotifierProvider<FlipperBridge>.value(value: _flipper),
+      ],
       child: MaterialApp(
         title: 'Sentinel',
         debugShowCheckedModeBanner: false,
