@@ -565,10 +565,11 @@ def agent_commands():
     # command_ttl_seconds before looking for work.
     ttl_ms = int(cfg().data.get("command_ttl_seconds", 120)) * 1000
     now = now_ms()
+    cutoff = now - ttl_ms
     db().execute(
         "UPDATE commands SET status='expired', completed_at=? "
         "WHERE device_id=? AND status='pending' AND created_at < ?",
-        (now, g.device_id, now - ttl_ms),
+        (now, g.device_id, cutoff),
     )
 
     while True:
@@ -579,21 +580,32 @@ def agent_commands():
                 return jsonify(commands=[])
             continue
         rows = db().all(
-            "SELECT * FROM commands WHERE device_id=? AND status='pending' ORDER BY created_at LIMIT 10",
-            (g.device_id,),
+            "SELECT * FROM commands WHERE device_id=? AND status='pending' AND created_at >= ? "
+            "ORDER BY created_at LIMIT 10",
+            (g.device_id, cutoff),
         )
         if rows:
             now = now_ms()
-            db().execute(
-                f"UPDATE commands SET status='delivered', delivered_at=? WHERE id IN ({','.join('?' * len(rows))})",
-                (now, *[r["id"] for r in rows]),
-            )
-            return jsonify(
-                commands=[
-                    {"id": r["id"], "type": r["type"], "args": parse_json(r["args"], {}), "created_at": r["created_at"]}
-                    for r in rows
-                ]
-            )
+            fresh = [r for r in rows if r["created_at"] >= now - ttl_ms]
+            stale = [r for r in rows if r["created_at"] < now - ttl_ms]
+            if stale:
+                db().execute(
+                    f"UPDATE commands SET status='expired', completed_at=? "
+                    f"WHERE id IN ({','.join('?' * len(stale))})",
+                    (now, *[r["id"] for r in stale]),
+                )
+            if fresh:
+                db().execute(
+                    f"UPDATE commands SET status='delivered', delivered_at=? "
+                    f"WHERE id IN ({','.join('?' * len(fresh))})",
+                    (now, *[r["id"] for r in fresh]),
+                )
+                return jsonify(
+                    commands=[
+                        {"id": r["id"], "type": r["type"], "args": parse_json(r["args"], {}), "created_at": r["created_at"]}
+                        for r in fresh
+                    ]
+                )
         if time.time() >= deadline:
             return jsonify(commands=[])
         time.sleep(0.4)
