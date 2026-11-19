@@ -193,7 +193,33 @@ power-button shutdown, sleep or network drop is caught this way. On return you g
 downtime, and a quicker reboot is reported as "restarted" when system uptime resets. These events notify the
 phone like any other warning and are pushed through ntfy when configured.
 
-## 6. Push notifications (optional)
+## 6. Flipper Zero bridge (optional)
+
+A Flipper Zero can act as a pocket remote. It has no network stack of its own, so it talks to your phone
+over Bluetooth and the phone relays its commands to the relay — the token and TOTP secret stay on the
+phone.
+
+```powershell
+cd flipper
+ufbt            # build dist/sentinel_flipper.fap
+ufbt launch     # install and start over USB
+```
+
+Or copy `Sentinel-Flipper-1.0.0.fap` from the release to `/ext/apps/GPIO/`.
+
+1. **Flipper:** Applications → GPIO → **Sentinel Bridge**; leave it on **Link: Bluetooth**.
+2. **Phone:** Settings → **Flipper** → **Set up** → **Scan for Flipper**, pick the Flipper (watch icon) and
+   accept the pairing prompt. If the Flipper shows a PIN, type it on the phone.
+3. The app performs a `PING`/`PONG` handshake and the status screen fills in with the PC name, the live
+   2FA code and the countdown.
+
+Close qFlipper while the bridge is in use: it owns the same BLE serial profile. If the phone says
+*"No answer from the Flipper"*, the Flipper app is not open — open it and tap Reconnect.
+
+Protocol, the optional ESP32 WiFi board for standalone use, and troubleshooting are documented in
+[flipper/README.md](../flipper/README.md).
+
+## 7. Push notifications (optional)
 The phone raises local notifications while the app is running. For alerts when it is closed, point the relay
 at an ntfy topic (ntfy.sh or self-hosted):
 
@@ -205,7 +231,7 @@ at an ntfy topic (ntfy.sh or self-hosted):
 Install the ntfy app on the phone and subscribe to the same topic. Away mode, security events, messages and
 PC replies are pushed. Leave both empty to disable.
 
-## 7. Verification
+## 8. Verification
 
 ```powershell
 # API contract

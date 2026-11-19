@@ -7,6 +7,7 @@
 | `agent/` | C# .NET 10, WPF, WinForms tray | Runs on the PC. Captures, executes commands, holds the local TOTP verifier. |
 | `server/` | Python 3, Flask, SQLite | Relay, pairing authority, TOTP verifier, storage. |
 | `mobile/` | Flutter 3.47 (Android/Windows) | Remote control, timeline, gallery, TOTP generator. |
+| `flipper/` | C, Flipper Zero SDK (FAP) | BLE keypad: sends commands to the phone and renders the state it returns. |
 | ADB (optional) | adb.exe | Direct phone↔PC transport via `adb reverse`. |
 
 The agent and the phone never address each other directly over the internet. Both connect **outbound** to
@@ -222,6 +223,33 @@ Activity and screenshots are relay-side data. The app loads the newest page (`20
 requests older pages with `before`; `has_more` tells it whether to keep the button visible. The PC can be
 offline the whole time.
 
+## Flipper Zero bridge
+
+The Flipper app (`flipper/`) is a remote keypad, not a network client. It has no relay token and no TOTP
+secret; the phone owns both and performs every request.
+
+```
+Flipper                      Phone app                       Relay / Agent
+  |  BLE serial (bonded)        |                                 |
+  |--- LOCK ------------------> | POST /command {type: lock} ---> |
+  |<-- STATE|... ---------------| GET /me (every 12 s)            |
+```
+
+- Transport: the stock Flipper BLE serial service (GATT), 512-byte frames, newline-delimited ASCII.
+- The phone is the central; the Flipper advertises. Pairing uses the Flipper's display-only PIN and the
+  standard bond.
+- Commands are a closed set (`PING`, `STATUS`, `LOCK`, `SECURE`, `AWAY`, `UNLOCK`, `SHOT`); the phone maps
+  them onto relay command types and computes TOTP locally for the ones that need it.
+- `STATE` carries the PC name, online/away/secure flags, session, current code and seconds remaining; the
+  Flipper only renders it.
+- Liveness: the Flipper sends `PING` every 10 s and expects `PONG`; the phone drops the link and
+  reconnects after 22 s of silence, even when Android still reports the connection as up.
+- The firmware's BT service opens a qFlipper RPC session on every BLE connection, so the app re-registers
+  its serial event callback on `BtStatusConnected`. Without that, received bytes go to the RPC protobuf
+  parser and TX fails.
+- Optional standalone mode replaces the BLE hop with a UART link (115200, GPIO 13/14) to an ESP32 running
+  `flipper/esp32/sentinel_bridge.ino`, which then holds the token in NVS.
+
 ## Configuration
 
 **Server** — `server/config.json` (auto-created).
@@ -251,5 +279,5 @@ offline the whole time.
 
 ## Versioning
 
-Agent 1.2.5 · server 1.2.4 · app 1.2.3 · watch 1.2.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 1.2.5 · server 1.2.4 · app 1.2.5 · watch 1.2.1, flipper 1.0 · relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.

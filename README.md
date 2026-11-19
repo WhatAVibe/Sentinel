@@ -8,11 +8,12 @@
 
 Lock it, watch it, message it, and get it back — without a cloud account.
 
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Wear%20OS-6C8CFF?style=flat-square)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Wear%20OS%20%7C%20Flipper-6C8CFF?style=flat-square)](#requirements)
 [![Agent](https://img.shields.io/badge/agent-.NET%2010-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#1-windows-agent)
 [![Relay](https://img.shields.io/badge/relay-Flask%20%2B%20SQLite-0B0D11?style=flat-square&logo=flask&logoColor=white)](#2-relay-server)
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
+[![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
 [![Version](https://img.shields.io/badge/version-1.2.5-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
@@ -116,6 +117,7 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **Power alerts** | "Went offline", "back online" with downtime, "restarted" on uptime reset |
 | **Activity log** | Windows, apps, network, searches, mouse/keyboard, clipboard, USB, sessions, security |
 | **Wear OS** | Quick actions, live code, and four tiles including a configurable all-in-one |
+| **Flipper Zero** | Lock, secure lock, away mode, screenshot and the live code, over BLE with the phone as the network |
 | **Phone management** | List, inspect and revoke linked phones from either side |
 | **No cloud** | Bearer tokens, hashed server-side, DPAPI on Windows, Keystore on Android |
 
@@ -128,12 +130,14 @@ flowchart LR
     subgraph Clients
         P["Android app<br/><i>Flutter</i>"]
         W["Wear OS app<br/><i>Kotlin + Compose</i>"]
+        F["Flipper Zero<br/><i>FAP 1.0</i>"]
     end
     R["Relay server<br/><i>Flask + SQLite</i>"]
     A["Windows agent<br/><i>.NET 10 WPF</i>"]
 
     P -->|HTTPS + bearer token| R
     W -->|HTTPS + bearer token| R
+    F -.->|BLE serial| P
     R -->|long-poll / WebSocket| A
     P -.->|optional ADB reverse| A
     W -.->|optional tiles / actions| R
@@ -143,6 +147,8 @@ flowchart LR
 - The **relay** stores devices, phones, events, messages and screenshots. It never gets your Windows
   password and cannot unlock the PC on its own.
 - The **phone/watch** never talk to the PC directly unless you enable the optional ADB direct link.
+- The **Flipper** has no network of its own: it talks to the phone over Bluetooth and the phone relays its
+  commands, so the relay token and TOTP secret never leave the phone.
 
 ---
 
@@ -154,6 +160,7 @@ flowchart LR
 | Agent | Windows 10/11 x64, .NET 10 SDK (or Visual Studio 2026 with the .NET desktop workload) |
 | Phone app | Flutter (Dart 3.13+), Android SDK; runs on Android 8.0+ |
 | Watch app | Android SDK 36, JDK 17+, Gradle wrapper included; Wear OS 3+ (API 30) |
+| Flipper app | Flipper Zero on stock firmware (API 87.1+), `ufbt`; no WiFi board needed |
 | Network | LAN, [Tailscale](https://tailscale.com/), or HTTPS via a tunnel/reverse proxy |
 
 ---
@@ -266,6 +273,26 @@ adb -s <watch-ip>:<port> install -r app\build\outputs\apk\debug\app-debug.apk
 
 Then open **Sentinel** on the watch, enter the relay URL and a pairing code from the PC. Add the tiles from
 the watch's tile carousel. Details: [watch/README.md](watch/README.md).
+
+### 6. Flipper Zero (optional)
+
+The Flipper app is a remote keypad: it talks to your phone over Bluetooth and the phone does the network
+work, so nothing sensitive is stored on the Flipper.
+
+```powershell
+cd flipper
+ufbt            # build dist/sentinel_flipper.fap
+ufbt launch     # install and start over USB
+```
+
+Or grab `Sentinel-Flipper-1.0.0.fap` from the release and copy it to `/ext/apps/GPIO/`.
+
+On the Flipper: **Applications → GPIO → Sentinel Bridge**, leave it on **Link: Bluetooth**. On the phone:
+**Settings → Flipper → Set up → Scan for Flipper**, pick it, and accept the pairing prompt (type the PIN
+shown on the Flipper if asked). The status screen then shows the PC name, the 2FA code and its countdown.
+
+Close qFlipper while the bridge is in use — it owns the same BLE serial profile. Full protocol, the
+optional ESP32 WiFi board and troubleshooting: [flipper/README.md](flipper/README.md).
 
 ---
 
@@ -408,6 +435,7 @@ Common relay keys:
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
+| [flipper/README.md](flipper/README.md) | Flipper build, BLE setup, line protocol, WiFi board |
 | [watch/README.md](watch/README.md) | Watch build, install, tiles, config |
 
 ---
@@ -419,6 +447,7 @@ Sentinel/
 ├─ agent/      Windows agent — C# .NET 10 WPF, tray, monitoring, secure lock
 ├─ mobile/     Flutter app — Android (primary), Windows for UI testing
 ├─ watch/      Wear OS app — Kotlin, Compose, Tiles
+├─ flipper/    Flipper Zero app — C, BLE serial bridge (+ optional ESP32 sketch)
 ├─ server/     Flask relay — SQLite, REST + WebSocket, screenshots
 ├─ docs/       Setup, security, architecture, API, screenshots
 ├─ scripts/    branding.py, end-to-end test runner
@@ -514,11 +543,12 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 |---|---|---|
 | Windows agent | 1.2.5 | C# / .NET 10 WPF |
 | Relay server | 1.2.4 | Python / Flask / SQLite |
-| Phone app | 1.2.3 (build 8) | Flutter |
+| Phone app | 1.2.5 (build 10) | Flutter |
 | Wear OS app | 1.2.1 | Kotlin / Compose / Tiles |
+| Flipper app | 1.0 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,
-`watch/app/build.gradle.kts`) and keep the docs in sync.
+`watch/app/build.gradle.kts`, `flipper/application.fam`) and keep the docs in sync.
 
 ---
 

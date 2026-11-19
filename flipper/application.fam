@@ -1,0 +1,12 @@
+App(
+    appid="sentinel_flipper",
+    name="Sentinel Bridge",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="sentinel_app_main",
+    requires=["gui"],
+    stack_size=8 * 1024,
+    fap_category="GPIO",
+    fap_version="1.0",
+    fap_author="WhatAVibe",
+    fap_description="Control a self-hosted Sentinel relay over Bluetooth through the phone app, or standalone with an ESP32 WiFi bridge.",
+)

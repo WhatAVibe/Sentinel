@@ -25,3 +25,6 @@ watch/local.properties
 *.zip
 *.apk
 *.aab
+
+flipper/dist/debug/
+flipper/.pio/
