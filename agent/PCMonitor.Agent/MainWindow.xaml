@@ -78,7 +78,7 @@
                             <Border Background="#10141A" CornerRadius="8" Padding="8,6" Margin="0,10,0,0">
                                 <StackPanel>
                                     <TextBlock Text="{Binding DeviceName}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="agent v1.2.4" FontSize="10" Foreground="{StaticResource Muted}"
+                                    <TextBlock Text="agent v1.2.5" FontSize="10" Foreground="{StaticResource Muted}"
                                                Margin="0,2,0,0" />
                                 </StackPanel>
                             </Border>

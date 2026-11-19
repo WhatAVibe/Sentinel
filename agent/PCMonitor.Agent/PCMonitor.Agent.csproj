@@ -15,8 +15,8 @@
     <Product>Sentinel</Product>
     <Company>PCMonitor</Company>
     <Description>Remote control and monitoring agent</Description>
-    <Version>1.2.4</Version>
-    <FileVersion>1.2.4.0</FileVersion>
+    <Version>1.2.5</Version>
+    <FileVersion>1.2.5.0</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>

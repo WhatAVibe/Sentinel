@@ -16,6 +16,13 @@ public sealed class AgentRuntime : IDisposable
     private CancellationTokenSource? _cts;
     private int _started;
 
+    // A command queued before this process started (or while the PC was
+    // asleep) must never run after a reboot. The relay expires pending
+    // commands after command_ttl_seconds; this is the agent-side guard.
+    private const long StaleCommandMs = 180_000;
+    private const long StartupGraceMs = 60_000;
+    private readonly long _startedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
     public AgentRuntime(AgentHost host, ApiClient api, AppConfig cfg)
     {
         _host = host;
@@ -149,6 +156,22 @@ public sealed class AgentRuntime : IDisposable
                 foreach (var command in commands)
                 {
                     if (ct.IsCancellationRequested) return;
+
+                    var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    if (command.CreatedAt > 0)
+                    {
+                        var ageMs = nowMs - command.CreatedAt;
+                        var preStartMs = _startedAtMs - command.CreatedAt;
+                        if (ageMs > StaleCommandMs || preStartMs > StartupGraceMs)
+                        {
+                            _host.Log.Write("warning", "discarded stale command",
+                                new { command.Id, command.Type, age_seconds = ageMs / 1000 });
+                            await _api.PostCommandResultAsync(command.Id, false, "expired", null, ct)
+                                .ConfigureAwait(false);
+                            continue;
+                        }
+                    }
+
                     var outcome = await _host.ExecuteCommandAsync(command, "remote").ConfigureAwait(false);
                     await _api.PostCommandResultAsync(command.Id, outcome.Ok, outcome.Error, outcome.Data, ct)
                         .ConfigureAwait(false);
