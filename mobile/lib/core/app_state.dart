@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   bool booting = true;
   bool locked = true;
   bool connected = false;
+  bool relayOnline = false;
   bool socketLive = false;
   bool busy = false;
   bool biometricEnabled = true;
@@ -84,6 +85,7 @@ class AppState extends ChangeNotifier {
       final current = client;
       if (current == null) return;
       device = await current.fetchDevice();
+      relayOnline = true;
       connected = device?.online ?? false;
       lastError = null;
       final fetched = await current.fetchEvents(since: 0);
@@ -92,7 +94,7 @@ class AppState extends ChangeNotifier {
       shots = await current.fetchScreenshots();
       notifyListeners();
     } catch (error) {
-      connected = false;
+      relayOnline = false;
       lastError = describeError(error);
       notifyListeners();
     }
@@ -102,6 +104,7 @@ class AppState extends ChangeNotifier {
     switch (event.type) {
       case 'state':
         final incoming = event.data as Device;
+        relayOnline = true;
         if (connected != incoming.online) {
           DiagLog.instance.add('agent', incoming.online ? 'PC online' : 'PC offline');
         }
@@ -145,6 +148,7 @@ class AppState extends ChangeNotifier {
         break;
       case 'connected':
         socketLive = true;
+        relayOnline = true;
         DiagLog.instance.add('socket', 'live channel connected');
         break;
       case 'disconnected':
@@ -168,10 +172,11 @@ class AppState extends ChangeNotifier {
     if (current == null) return;
     try {
       device = await current.fetchDevice();
+      relayOnline = true;
       connected = device?.online ?? false;
       lastError = null;
     } catch (error) {
-      connected = false;
+      relayOnline = false;
       lastError = describeError(error);
     }
     notifyListeners();
@@ -288,6 +293,7 @@ class AppState extends ChangeNotifier {
     events = [];
     shots = [];
     connected = false;
+    relayOnline = false;
     notifyListeners();
   }
 
@@ -299,6 +305,7 @@ class AppState extends ChangeNotifier {
     events = [];
     shots = [];
     connected = false;
+    relayOnline = false;
     notifyListeners();
   }
 
@@ -348,6 +355,7 @@ class AppState extends ChangeNotifier {
     client?.dispose();
     client = null;
     socketLive = false;
+    relayOnline = false;
   }
 
   @override

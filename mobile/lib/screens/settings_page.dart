@@ -163,10 +163,17 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  state.connected
-                      ? 'Reachable · ${state.device?.name ?? 'PC'} online'
-                      : 'Not reachable right now',
-                  style: TextStyle(fontSize: 11, color: state.connected ? C.success : C.warning),
+                  state.relayOnline
+                      ? (state.device?.online == true
+                          ? 'Relay reachable · ${state.device?.name ?? 'PC'} online'
+                          : 'Relay reachable · ${state.device?.name ?? 'PC'} offline')
+                      : 'Relay unreachable',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: state.relayOnline
+                        ? (state.device?.online == true ? C.success : C.muted)
+                        : C.warning,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -178,8 +185,10 @@ class SettingsPage extends StatelessWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(state.connected
-                                  ? 'Connected to ${state.device?.name ?? 'PC'}'
+                              content: Text(state.relayOnline
+                                  ? (state.device?.online == true
+                                      ? 'Relay OK · connected to ${state.device?.name ?? 'PC'}'
+                                      : 'Relay OK · ${state.device?.name ?? 'PC'} is offline')
                                   : (state.lastError ?? 'No response')),
                             ),
                           );
@@ -262,7 +271,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.2.1'),
+                const _Line('App', 'Sentinel 1.2.2'),
                 const _Line('Relay protocol', 'v1.1'),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'

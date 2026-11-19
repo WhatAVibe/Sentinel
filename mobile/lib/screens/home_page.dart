@@ -311,7 +311,7 @@ class _Hero extends StatelessWidget {
                 ),
               ),
               Pill(
-                device.online ? 'ONLINE' : 'OFFLINE',
+                device.online ? 'PC ONLINE' : 'PC OFFLINE',
                 color: device.online ? C.success : C.warning,
               ),
             ],
@@ -321,6 +321,15 @@ class _Hero extends StatelessWidget {
             [device.metrics.user, device.metrics.hostname].where((e) => e.isNotEmpty).join('  ·  '),
             style: const TextStyle(fontSize: 12, color: C.muted),
           ),
+          if (!device.online || !state.relayOnline) ...[
+            const SizedBox(height: 3),
+            Text(
+              state.relayOnline
+                  ? 'PC offline · last seen ${formatRelative(device.lastSeen)}'
+                  : 'Relay unreachable',
+              style: TextStyle(fontSize: 11, color: state.relayOnline ? C.muted : C.warning),
+            ),
+          ],
           const SizedBox(height: 18),
           _Bar(label: 'CPU', value: device.metrics.cpuPercent / 100, right: '${device.metrics.cpuPercent.toStringAsFixed(0)}%'),
           const SizedBox(height: 10),

@@ -214,10 +214,12 @@ class ConnectionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final direct = state.session?.isDirect ?? false;
-    final online = state.connected;
+    final online = state.relayOnline;
     final color = online ? C.success : C.warning;
-    final label = online ? (direct ? 'DIRECT' : 'LIVE') : 'OFFLINE';
-    return Pill(label, color: color, icon: online ? Icons.bolt_rounded : Icons.cloud_off_rounded);
+    final label = direct
+        ? (online ? 'DIRECT' : 'NO LINK')
+        : (online ? 'RELAY' : 'NO RELAY');
+    return Pill(label, color: color, icon: online ? Icons.dns_rounded : Icons.cloud_off_rounded);
   }
 }
 
