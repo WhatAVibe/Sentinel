@@ -45,8 +45,11 @@ touching the PC token.
    pending row exists (checked every 400 ms), so latency is ~1 s without a socket.
 4. Agent executes inside `CommandExecutor` (`AgentHost.ExecuteCommandAsync`) and posts
    `POST /agent/commands/{id}/result`.
-5. Statuses: `pending → delivered → done|failed`, or `timeout` after 90 s without a result. The phone
-   receives `{type:"command"}` pushes and can also poll `/commands/{id}`.
+5. Pending commands expire after `command_ttl_seconds` (default 120). The agent also discards anything older
+   than three minutes or created more than a minute before it started, and reports `expired`. This stops a
+   command queued while the PC was asleep or shutting down from running after the next boot.
+6. Statuses: `pending → delivered → done|failed`, `timeout` after 90 s without a result, or `expired`. The
+   phone receives `{type:"command"}` pushes and can also poll `/commands/{id}`.
 
 Commands that require a code: `unlock`, `away_disable`, and (optionally) `shutdown`/`restart` when the
 device setting `protect_power` is on. The agent **re-verifies** the code locally before acting, so a
@@ -238,5 +241,5 @@ Retention runs hourly: old events/screenshots/audit rows and their files are del
 
 ## Versioning
 
-Agent 1.2.4 · server 1.2.2 · app 1.2.1 · watch 1.2.0 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 1.2.5 · server 1.2.3 · app 1.2.2 · watch 1.2.0 · relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.

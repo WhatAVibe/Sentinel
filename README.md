@@ -13,7 +13,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Relay](https://img.shields.io/badge/relay-Flask%20%2B%20SQLite-0B0D11?style=flat-square&logo=flask&logoColor=white)](#2-relay-server)
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
-[![Version](https://img.shields.io/badge/version-1.2.4-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-1.2.5-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -373,6 +373,7 @@ Common relay keys:
 | `port` | `8765` | HTTP port |
 | `public_url` | `""` | URL used in pairing links |
 | `offline_alert_seconds` | `300` | Silence before "went offline" |
+| `command_ttl_seconds` | `120` | Drop queued commands older than this |
 | `power_check_seconds` | `20` | Offline watcher interval |
 | `boot_notify` | `true` | "Restarted" event on uptime reset |
 | `retention_days` | `30` | Event/audit/screenshot retention |
@@ -425,6 +426,8 @@ Sentinel/
 | Phone says **Cannot reach the server** | Check the URL, TLS, and that the relay is running. LAN needs `http://`; internet needs HTTPS or Tailscale. |
 | Agent shows **Re-pair** | Token rejected (relay DB reset or device removed). Unpair and pair again. |
 | 2FA code rejected | Phone/PC clock drift. Enable automatic time sync on both. |
+| A queued action fires after the PC restarts | Commands expire after `command_ttl_seconds` (120 s) and the agent discards anything from before it started. Update the relay to 1.2.3+ and the agent to 1.2.5+. |
+| Header shows **RELAY** but the PC is offline | They are separate indicators: RELAY means the app can reach the relay; the card shows PC ONLINE/OFFLINE. |
 | `http_500` in bursts, server log says `Too many open files` | Relay hit its fd limit. Use server 1.2.2+ and set `LimitNOFILE=65536` in the systemd unit. |
 | Secure lock won't release | Use the code on the overlay or the phone. Ctrl+Alt+Del opens Windows security; the lock returns. |
 | Screenshots are black | Display off, UAC/secure desktop, or protected content. Wake the display first. |
@@ -457,6 +460,11 @@ A phone pairs with one PC at a time; a PC can have several phones. Run one relay
 **Where is my data?**
 On your relay (`server/storage`) and on your devices. Nothing is sent anywhere else unless you configure ntfy.
 
+**Why does the app show RELAY while the PC is offline?**
+They describe different things. The header pill is the app ↔ relay connection; the device card is the
+PC. A PC that is asleep or off still leaves the relay reachable, and the card says PC OFFLINE with its
+last-seen time.
+
 ---
 
 ## Development
@@ -483,9 +491,9 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.2.4 | C# / .NET 10 WPF |
-| Relay server | 1.2.2 | Python / Flask / SQLite |
-| Phone app | 1.2.1 (build 6) | Flutter |
+| Windows agent | 1.2.5 | C# / .NET 10 WPF |
+| Relay server | 1.2.3 | Python / Flask / SQLite |
+| Phone app | 1.2.2 (build 7) | Flutter |
 | Wear OS app | 1.2.0 | Kotlin / Compose / Tiles |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

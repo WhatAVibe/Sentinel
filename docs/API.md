@@ -120,7 +120,8 @@ heartbeat), "back online" (with downtime), and "restarted" (system uptime reset)
 created_at, updated_at}`.
 
 **Command**: `{id, type, args, status, created_at, delivered_at, completed_at, result{ok,error,data}, source}`,
-status `pending|delivered|done|failed|timeout`.
+status `pending|delivered|done|failed|timeout|expired`.
+Pending commands expire after `command_ttl_seconds` (default 120) and are never delivered afterwards.
 
 **Screenshot**: `{id, ts, monitor, monitor_name, width, height, trigger, size, url}`.
 
