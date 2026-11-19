@@ -6,6 +6,7 @@
   "public_url": "",
   "pair_code_ttl_seconds": 600,
   "command_timeout_seconds": 90,
+  "command_ttl_seconds": 120,
   "retention_days": 30,
   "max_upload_mb": 32,
   "allow_registration": true,

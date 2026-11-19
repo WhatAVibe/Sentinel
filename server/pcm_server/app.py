@@ -48,6 +48,11 @@ def _cleanup_loop(app, cfg, db):
                     (now, now - int(cfg.data["command_timeout_seconds"]) * 1000),
                 )
                 c.execute(
+                    "UPDATE commands SET status='expired', completed_at=? "
+                    "WHERE status='pending' AND created_at < ?",
+                    (now, now - int(cfg.data.get("command_ttl_seconds", 120)) * 1000),
+                )
+                c.execute(
                     "UPDATE pair_requests SET status='expired', secret_tmp=NULL "
                     "WHERE status='pending' AND expires_at < ?",
                     (now,),

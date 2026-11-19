@@ -558,6 +558,19 @@ def agent_heartbeat():
 def agent_commands():
     wait = min(int(request.args.get("wait", 25)), 25)
     deadline = time.time() + wait
+
+    # Commands are short-lived. A phone may queue something while the PC is
+    # asleep, locked or shutting down; without this, the command would sit in
+    # the queue and fire after the next boot. Expire anything older than
+    # command_ttl_seconds before looking for work.
+    ttl_ms = int(cfg().data.get("command_ttl_seconds", 120)) * 1000
+    now = now_ms()
+    db().execute(
+        "UPDATE commands SET status='expired', completed_at=? "
+        "WHERE device_id=? AND status='pending' AND created_at < ?",
+        (now, g.device_id, now - ttl_ms),
+    )
+
     while True:
         if hub().agent_online(g.device_id):
             # The websocket channel owns delivery while it is connected.
@@ -593,7 +606,7 @@ def agent_command_result(cid):
     row = db().one("SELECT * FROM commands WHERE id=? AND device_id=?", (cid, g.device_id))
     if not row:
         return jsonify(error="not_found"), 404
-    if row["status"] in ("done", "failed"):
+    if row["status"] in ("done", "failed", "expired", "timeout"):
         return jsonify(ok=True, status=row["status"])
     ok = bool(body.get("ok", True))
     result = {

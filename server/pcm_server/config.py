@@ -10,6 +10,7 @@ DEFAULTS = {
     "public_url": "",
     "pair_code_ttl_seconds": 600,
     "command_timeout_seconds": 90,
+    "command_ttl_seconds": 120,
     "retention_days": 30,
     "max_upload_mb": 32,
     "allow_registration": True,
@@ -33,7 +34,7 @@ class Config:
         self.storage_dir = storage
         self.shots_dir = storage / "shots"
         self.db_path = storage / "sentinel.db"
-        self.version = "1.2.2"
+        self.version = "1.2.3"
 
     @classmethod
     def load(cls, path: str | os.PathLike) -> "Config":
