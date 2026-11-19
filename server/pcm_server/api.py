@@ -621,14 +621,16 @@ def agent_command_result(cid):
     if row["status"] in ("done", "failed", "expired", "timeout"):
         return jsonify(ok=True, status=row["status"])
     ok = bool(body.get("ok", True))
+    error = body.get("error")
+    status = "expired" if (not ok and str(error) == "expired") else ("done" if ok else "failed")
     result = {
         "ok": ok,
-        "error": body.get("error"),
+        "error": error,
         "data": body.get("data"),
     }
     db().execute(
         "UPDATE commands SET status=?, completed_at=?, result=? WHERE id=?",
-        ("done" if ok else "failed", now_ms(), json.dumps(result), cid),
+        (status, now_ms(), json.dumps(result), cid),
     )
     result_row = db().one("SELECT * FROM commands WHERE id=?", (cid,))
     hub().push_to_device_clients(
