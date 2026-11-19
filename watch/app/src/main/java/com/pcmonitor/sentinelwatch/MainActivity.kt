@@ -172,7 +172,7 @@ private fun PairScreen(store: Store, onPaired: (Session) -> Unit) {
                         val api = Api(base)
                         val paired = withContext(Dispatchers.IO) {
                             val requestId = api.lookup(code)
-                            api.approve(requestId, code, "Watch", store.uid())
+                            api.approve(requestId, code, DEVICE_NAME, store.uid())
                         }
                         val session = Session(
                             baseUrl = base,
@@ -371,7 +371,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.2.0", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 1.2.1", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }

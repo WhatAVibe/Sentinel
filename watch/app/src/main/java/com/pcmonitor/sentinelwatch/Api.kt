@@ -5,6 +5,11 @@ import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
 
+val DEVICE_NAME: String = run {
+    val maker = android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+    "$maker ${android.os.Build.MODEL}".trim()
+}
+
 class ApiException(val status: Int, val code: String) : Exception(code)
 
 data class PairResult(
@@ -31,7 +36,8 @@ class Api(private val baseUrl: String, private val token: String? = null, privat
         connection.connectTimeout = timeoutMs
         connection.readTimeout = timeoutMs + 4000
         connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("User-Agent", "SentinelWatch/1.0.0")
+        connection.setRequestProperty("User-Agent", "SentinelWatch/1.2.1")
+        connection.setRequestProperty("X-Device-Name", DEVICE_NAME)
         if (!token.isNullOrEmpty()) {
             connection.setRequestProperty("Authorization", "Bearer $token")
         }
