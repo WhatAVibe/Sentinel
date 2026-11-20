@@ -285,7 +285,7 @@ ufbt            # build dist/sentinel_flipper.fap
 ufbt launch     # install and start over USB
 ```
 
-Or grab `Sentinel-Flipper-1.0.0.fap` from the release and copy it to `/ext/apps/GPIO/`.
+Or grab `Sentinel-Flipper-1.1.0.fap` from the release and copy it to `/ext/apps/GPIO/`.
 
 On the Flipper: **Applications → GPIO → Sentinel Bridge**, leave it on **Link: Bluetooth**. On the phone:
 **Settings → Flipper → Set up → Scan for Flipper**, pick it, and accept the pairing prompt (type the PIN
@@ -545,7 +545,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 | Relay server | 1.2.4 | Python / Flask / SQLite |
 | Phone app | 1.2.5 (build 10) | Flutter |
 | Wear OS app | 1.2.1 | Kotlin / Compose / Tiles |
-| Flipper app | 1.0 | C / Flipper SDK (API 87.1) |
+| Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,
 `watch/app/build.gradle.kts`, `flipper/application.fam`) and keep the docs in sync.

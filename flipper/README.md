@@ -9,7 +9,7 @@ state the phone returns. The phone keeps the relay token and the TOTP secret and
 | | |
 |---|---|
 | **App id** | `sentinel_flipper` |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Firmware API** | 87.1 (official firmware, Momentum and derivatives) |
 | **Category** | Applications → GPIO → **Sentinel Bridge** |
 | **Requires** | Sentinel phone app 1.2.5+ |
@@ -87,7 +87,8 @@ session whenever something connects, and the app claims it back only on its own 
 | Entry | Sends | Result |
 |---|---|---|
 | Link: Bluetooth / WiFi board | — | Switches transport (saved) |
-| Connect | `STATUS` | Opens the status screen and asks the phone for state |
+| Connect | `STATUS` | Opens the status panel and asks the phone for state |
+| 2FA Code | — | Full-screen code: large digits, seconds, shrinking bar |
 | Lock PC | `LOCK` | `lock` |
 | Secure Lock | `SECURE` | `lock_screen` with a message |
 | Away On/Off | `AWAY` | `away_enable` / `away_disable` (TOTP handled by the phone) |
@@ -95,11 +96,19 @@ session whenever something connects, and the app claims it back only on its own 
 | Screenshot | `SHOT` | `screenshot` |
 | Refresh Status | `STATUS` | Re-reads state |
 | Forget Pairing | `FORGET` | WiFi board mode only |
-| Status Log | — | Last INFO/ERR lines |
+| Status Log | — | Scrollable log panel (Up/Down) with the transport in the header |
 | Exit | — | Closes the app and releases BLE |
 
-The status screen shows the PC name, `online / away / secure lock / session`, the live TOTP code with its
-countdown, and the last few action results.
+Three screens, each with one job:
+
+- **Status** — PC name, `online / away / locked / session`, the code, and the last action result.
+  **OK** jumps to the log.
+- **2FA** — only the code. Large digits, the remaining seconds counted down every second, and a progress
+  bar that shrinks to zero. Nothing scrolls.
+- **Log** — raw `INFO`/`ERR` lines, wrapped to the panel width, with its own scroll position that never
+  moves on its own.
+
+Back returns to the menu from any of them; back on the menu leaves the app.
 
 ---
 
@@ -138,11 +147,17 @@ BLE identifiers (stock Flipper serial service, the same one qFlipper uses):
 
 ## Optional WiFi board mode
 
-Only needed if you want the Flipper to work without the phone. The sketch in [`esp32/`](esp32/) is built
-for a classic **ESP32 Dev Module**. The official Flipper WiFi Devboard is an **ESP32-S2-WROVER**: it needs
-a different PlatformIO board and different UART pins, and is untested here.
+Only needed if you want the Flipper to work without the phone. The ESP32 keeps the relay token in NVS,
+does the HTTPS work itself, and talks to the Flipper over UART at 115200 baud.
 
-Wiring for a classic ESP32:
+Two build targets are included:
+
+| Target | Board | UART to the Flipper |
+|---|---|---|
+| `esp32dev` | classic ESP32 Dev Module | UART0: RX **GPIO3**, TX **GPIO1** |
+| `esp32s2` | official WiFi Devboard (ESP32-S2-WROVER, 4 MB) | UART0: RX **GPIO44**, TX **GPIO43** |
+
+Wiring for a classic ESP32 board:
 
 | Flipper GPIO | ESP32 |
 |---|---|
@@ -150,12 +165,37 @@ Wiring for a classic ESP32:
 | 14 (RX) | TX (GPIO1) |
 | GND | GND |
 
-Flash with PlatformIO (`pio run -t upload` from `esp32/`) or the Arduino IDE with ArduinoJson 7. Then on
-the Flipper: **Link: WiFi board**, enter WiFi SSID/password, relay URL and a pairing code from
-**PC → Settings → Pair another phone**, and use **Pair / Re-pair**.
+The official devboard already routes 43/44 to the header, so it just plugs in.
 
-The ESP32 stores the relay token in NVS and uses `setInsecure()` for HTTPS, so treat it as a trusted
-device.
+### Flashing
+
+```bash
+cd flipper/esp32
+pio run -e esp32dev -t upload          # or: -e esp32s2
+```
+
+On the S2 board, hold **BOOT**, tap **RESET**, release **BOOT** if the upload cannot open the port. The
+firmware keeps USB CDC enabled, so the board normally enumerates as a serial port and can be flashed again
+without touching the buttons.
+
+### Configuring without the Flipper
+
+The S2 build mirrors the protocol on USB, so the bridge can be set up from any serial terminal at 115200:
+
+```
+SSID:YourNetwork
+PASS:your-password
+URL:https://sentinel.your-domain.tld
+PAIR:ABC123          # six-character code from PC -> Settings -> Pair another phone
+CONNECT
+STATUS
+```
+
+The classic build uses the same commands, but only on the UART the Flipper is attached to. Configure it
+either way, or from the Flipper: **Link: WiFi board**, fill in SSID/password, relay URL and the pairing
+code, then **Connect** and **Pair / Re-pair**.
+
+The ESP32 uses `setInsecure()` for HTTPS, so treat the board (and its NVS) as a trusted device.
 
 ---
 
@@ -202,16 +242,44 @@ flipper/
 │  ├─ sentinel_app.c      UI, menu, config, state rendering, lifecycle
 │  ├─ sentinel_link.c     BLE serial + UART transports, line framing
 │  └─ sentinel_link.h
-├─ esp32/                 optional standalone WiFi bridge sketch
+├─ esp32/                 optional standalone WiFi bridge
+│  ├─ platformio.ini      esp32dev + esp32s2 targets
+│  └─ src/sentinel_bridge.ino
 └─ dist/                  built .fap
 ```
 
 Implementation notes:
 
-- The UI is a `ViewDispatcher` with three views (submenu, text input, text box). Back is handled through a
-  dispatcher navigation callback that posts a custom event, so no view is switched from inside the input
-  callback.
+- The UI is a `ViewDispatcher` with five views: submenu, text input, **Status**, **2FA** and **Log**. Back
+  is handled through a dispatcher navigation callback that posts a custom event, so no view is switched
+  from inside an input callback.
 - The RX worker thread only queues bytes and posts an event; all rendering happens on the GUI thread.
 - On `BtStatusConnected` the app re-registers its serial event callback. The firmware's BT service opens a
   qFlipper RPC session on every connection and would otherwise consume the phone's writes and the TX
   channel.
+
+### Design notes
+
+Earlier builds pushed everything — the PC name, the TOTP code, *and* every `INFO`/`ERR` line — through a
+single scrolling `TextBox`. It looked like a terminal, it auto-scrolled like a terminal, and it could crash
+like one too: the box keeps the **raw pointer** it is handed (`text_box_set_text` does not copy), and it was
+pointed at a `FuriString` buffer that we reset and rebuilt on every incoming line. A redraw that landed
+after the next rebuild read moved or freed memory — on-device that shows up as a bare
+"NULL pointer dereference" rather than anything specific.
+
+1.1 removes that whole class of problem:
+
+- **Status** is a hand-drawn panel (its own `View` + draw callback) fed from a fixed-size `StatusModel`
+  struct: PC name, online/away/locked, session, the code and a countdown bar. Press **OK** to jump to the
+  Log.
+- **2FA** is another hand-drawn panel with a `CodeModel` and nothing else on it: large digits, the seconds
+  remaining (the 1 s dispatcher tick decrements it locally and pushes the model), and a progress bar that
+  shrinks to zero.
+- **Log** is now a custom view with its own scroll offset and a `char[2048]` buffer we own for the life of
+  the app. Rows are pre-wrapped when the log changes, the header shows the transport, and new lines never
+  move the view — Up/Down scroll it.
+- Every callback that can be reached from the link worker or the BT stack checks a `volatile bool alive`
+  flag, and the BLE serial callback is unhooked before the profile is restored on exit.
+
+If you still hit a crash, the rolling `trace.log` (see **Troubleshooting** above) records the last menu
+picks, view switches and teardown steps before it happened — attach it when reporting.

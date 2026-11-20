@@ -138,7 +138,9 @@ static void sentinel_ble_stop(SentinelLink* link) {
     if(link->bt) {
         bt_set_status_changed_callback(link->bt, NULL, NULL);
         if(link->ble) {
-            // Drop the peer first so the profile is never torn down mid-transfer.
+            // Unhook before anything is torn down so a late serial event can
+            // never call back into a freed app.
+            ble_profile_serial_set_event_callback(link->ble, 0, NULL, NULL);
             bt_disconnect(link->bt);
             bt_profile_restore_default(link->bt);
         }
