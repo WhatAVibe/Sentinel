@@ -261,6 +261,10 @@ The ESP32 uses `setInsecure()` for HTTPS, so treat the board (and its NVS) as a 
   on the phone.
 - WiFi board mode stores the token in the ESP32's NVS. Revoke that phone entry from **Linked phones** if
   the board is lost.
+- The WiFi password is kept in the ESP32's NVS and, in WiFi board mode, also in
+  `/ext/apps_data/sentinel_flipper/config.txt` on the Flipper's SD card **in plain text** (the Flipper needs
+  it to send the configuration to the board). Treat the card as sensitive, or configure the board over USB
+  instead and leave the Flipper's WiFi fields empty.
 - Sentinel is for devices you own. Ctrl+Alt+Del cannot be blocked by the PC agent and a local
   administrator can stop it — see the [security model](../docs/SECURITY.md).
 

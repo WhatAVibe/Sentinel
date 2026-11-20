@@ -205,7 +205,7 @@ ufbt            # build dist/sentinel_flipper.fap
 ufbt launch     # install and start over USB
 ```
 
-Or copy `Sentinel-Flipper-1.0.0.fap` from the release to `/ext/apps/GPIO/`.
+Or copy `Sentinel-Flipper-1.1.0.fap` from the release to `/ext/apps/GPIO/`.
 
 1. **Flipper:** Applications → GPIO → **Sentinel Bridge**; leave it on **Link: Bluetooth**.
 2. **Phone:** Settings → **Flipper** → **Set up** → **Scan for Flipper**, pick the Flipper (watch icon) and

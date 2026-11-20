@@ -24,6 +24,10 @@
 - Added an app icon (`icon.png`, 10×10 RGBA) for the Applications list.
 - The BLE serial callback is unhooked before the profile is restored on exit, so a late serial event can
   never reach a freed app.
+- **WiFi board:** proper `esp32s2` target for the official ESP32-S2-WROVER devboard (UART0 on GPIO43/44),
+  USB CDC kept so the board can be flashed and configured without the BOOT+RESET dance, and the command
+  protocol mirrored on USB (`SSID:`/`PASS:`/`URL:`/`PAIR:`/`CONNECT`/`STATUS`). Classic ESP32 keeps
+  `esp32dev` with UART0 on GPIO1/3. Release builds ship merged 4 MB images for both.
 
 ## 1.0
 
