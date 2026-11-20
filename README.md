@@ -99,6 +99,21 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
   </tr>
 </table>
 
+### Flipper Zero
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/images/FlipperWifi.jpg" alt="Sentinel Bridge menu with Link: WiFi board selected"></td>
+    <td width="33%"><img src="docs/images/FlipperSecureLock.jpg" alt="Status panel: PC name, state and 2FA code"></td>
+    <td width="33%"><img src="docs/images/Flipper2FA.jpg" alt="2FA panel: large code, progress bar and seconds remaining"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Menu</b> — transport and actions</sub></td>
+    <td align="center"><sub><b>Status</b> — name, state, code</sub></td>
+    <td align="center"><sub><b>2FA</b> — code, bar, seconds</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## Features

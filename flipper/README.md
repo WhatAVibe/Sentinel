@@ -16,6 +16,23 @@ state the phone returns. The phone keeps the relay token and the TOTP secret and
 
 ---
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="33%"><img src="../docs/images/FlipperWifi.jpg" alt="Sentinel Bridge menu with Link: WiFi board selected"></td>
+    <td width="33%"><img src="../docs/images/FlipperSecureLock.jpg" alt="Status panel: PC name, online/locked/active and the 2FA code"></td>
+    <td width="33%"><img src="../docs/images/Flipper2FA.jpg" alt="2FA panel: large code, progress bar and seconds remaining"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Menu</b> — transport and actions</sub></td>
+    <td align="center"><sub><b>Status</b> — name, state, code</sub></td>
+    <td align="center"><sub><b>2FA</b> — code, bar, seconds</sub></td>
+  </tr>
+</table>
+
+---
+
 ## Two transports
 
 | Mode | Needs | Works when the phone is away? |
@@ -40,8 +57,24 @@ Flipper, and nothing sensitive stored on it.
 
 ### Prebuilt (recommended)
 
-Download `Sentinel-Flipper-1.0.0.fap` from the [release](https://github.com/WhatAVibe/Sentinel/releases)
-and copy it to `/ext/apps/GPIO/`, or use qFlipper: **File manager → apps → GPIO → install from file**.
+Download `Sentinel-Flipper-1.1.0.fap` from the
+[flipper-v1.1.0 release](https://github.com/WhatAVibe/Sentinel/releases/tag/flipper-v1.1.0) and copy it to
+`/ext/apps/GPIO/`, or use qFlipper: **File manager → apps → GPIO → install from file**.
+
+The same release carries prebuilt firmware for the optional WiFi boards:
+
+| Asset | Board | Flash offset |
+|---|---|---|
+| `Sentinel-ESP32S2-1.1.bin` | official WiFi Devboard (ESP32-S2-WROVER, 4 MB) | `0x0` |
+| `Sentinel-ESP32-1.1.bin` | classic ESP32 Dev Module (4 MB) | `0x0` |
+
+```bash
+esptool --chip esp32s2 write_flash 0x0 Sentinel-ESP32S2-1.1.bin
+esptool --chip esp32   write_flash 0x0 Sentinel-ESP32-1.1.bin
+```
+
+Each is a merged image (bootloader + partition table + application), so one write is enough for a blank
+board.
 
 ### From source
 
@@ -174,9 +207,30 @@ cd flipper/esp32
 pio run -e esp32dev -t upload          # or: -e esp32s2
 ```
 
-On the S2 board, hold **BOOT**, tap **RESET**, release **BOOT** if the upload cannot open the port. The
-firmware keeps USB CDC enabled, so the board normally enumerates as a serial port and can be flashed again
-without touching the buttons.
+Or flash the merged image from the release with a single `esptool write_flash 0x0 …` (see **Install**
+above). On the S2 board, hold **BOOT**, tap **RESET**, release **BOOT** if the upload cannot open the port.
+The firmware keeps USB CDC enabled, so the board normally enumerates as a serial port and can be flashed
+again without touching the buttons.
+
+### Building the release images
+
+```bash
+cd flipper/esp32
+pio run -e esp32s2 && pio run -e esp32dev
+
+python -m esptool --chip esp32s2 merge-bin -o Sentinel-ESP32S2-1.1.bin \
+  --flash-mode dio --flash-size 4MB \
+  0x1000 .pio/build/esp32s2/bootloader.bin \
+  0x8000 .pio/build/esp32s2/partitions.bin \
+  0x10000 .pio/build/esp32s2/firmware.bin
+
+python -m esptool --chip esp32 merge-bin -o Sentinel-ESP32-1.1.bin \
+  --flash-mode dio --flash-size 4MB \
+  0x1000 .pio/build/esp32dev/bootloader.bin \
+  0x8000 .pio/build/esp32dev/partitions.bin \
+  0xe000 "$HOME/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin" \
+  0x10000 .pio/build/esp32dev/firmware.bin
+```
 
 ### Configuring without the Flipper
 

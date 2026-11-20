@@ -41,7 +41,7 @@
 #include <esp_system.h>
 #include <time.h>
 
-static const char* APP_VERSION = "0.2.0";
+static const char* APP_VERSION = "1.1";
 static const unsigned long POLL_MS = 15000;
 static const unsigned long HTTP_TIMEOUT_MS = 10000;
 
