@@ -65,8 +65,19 @@ unsigned long lastPoll = 0;
 
 // ---------------------------------------------------------------- helpers
 
+// Flipper link. The Flipper sends on GPIO13 (Flipper TX) to the ESP32 RX and
+// listens on GPIO14; the official WiFi devboard maps UART0 to GPIO44/43.
+#if defined(SENTINEL_ESP32S2)
+#define FLIPPER_UART Serial0
+#else
+#define FLIPPER_UART Serial
+#endif
+
 void sendLine(const String& line) {
+  FLIPPER_UART.println(line);
+#if defined(SENTINEL_ESP32S2)
   Serial.println(line);
+#endif
 }
 void info(const String& text) {
   sendLine("INFO|" + text);
@@ -476,8 +487,14 @@ void handleCommand(String line) {
 }
 
 void setup() {
+#if defined(SENTINEL_ESP32S2)
+  // USB CDC stays available for logs and esptool; the Flipper talks on UART0.
   Serial.begin(115200);
-  Serial.setTimeout(200);
+  FLIPPER_UART.begin(115200, SERIAL_8N1, 44, 43);
+#else
+  FLIPPER_UART.begin(115200);
+#endif
+  FLIPPER_UART.setTimeout(200);
   loadPrefs();
   sendLine("INFO|Sentinel bridge " + String(APP_VERSION));
   if(wifiSsid.length() > 0) {
@@ -486,12 +503,22 @@ void setup() {
   if(paired && WiFi.status() == WL_CONNECTED) fetchStatus();
 }
 
+void pump(Stream& port) {
+  if(!port.available()) return;
+  String line = port.readStringUntil('\n');
+  line.replace("\r", "");
+  line.trim();
+  if(line.length() == 0) return;
+  handleCommand(line);
+}
+
 void loop() {
-  if(Serial.available()) {
-    String line = Serial.readStringUntil('\n');
-    line.replace("\r", "");
-    handleCommand(line);
-  }
+  pump(FLIPPER_UART);
+#if defined(SENTINEL_ESP32S2)
+  // The USB port mirrors the protocol so the bridge can be configured and
+  // checked from a serial terminal without the Flipper attached.
+  pump(Serial);
+#endif
 
   if(paired && WiFi.status() == WL_CONNECTED && millis() - lastPoll > POLL_MS) {
     lastPoll = millis();

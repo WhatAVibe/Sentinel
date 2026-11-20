@@ -28,3 +28,4 @@ watch/local.properties
 
 flipper/dist/debug/
 flipper/.pio/
+flipper/esp32/.pio/
