@@ -226,6 +226,8 @@ class Database:
                     conn.execute("ALTER TABLE mobiles ADD COLUMN kind TEXT")
                 if "confirmed" not in columns:
                     conn.execute("ALTER TABLE mobiles ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 1")
+                if "name_locked" not in columns:
+                    conn.execute("ALTER TABLE mobiles ADD COLUMN name_locked INTEGER NOT NULL DEFAULT 0")
                 conn.commit()
         finally:
             conn.close()

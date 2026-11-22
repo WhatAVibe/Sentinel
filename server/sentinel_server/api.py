@@ -127,7 +127,7 @@ def mobile_required(fn):
         if not mobile.get("confirmed", 1) and request.endpoint != "api.me":
             return jsonify(error="pending_confirmation"), 403
         name = (request.headers.get("X-Device-Name") or "").strip()[:64]
-        if name and name != (mobile.get("name") or ""):
+        if name and not mobile.get("name_locked") and name != (mobile.get("name") or ""):
             db().execute(
                 "UPDATE mobiles SET last_seen=?, name=? WHERE id=?",
                 (now_ms(), name, mobile["id"]),
@@ -477,8 +477,8 @@ def pair_approve():
     if existing:
         mid = existing["id"]
         db().execute(
-            "UPDATE mobiles SET name = ?, token_hash = ?, last_seen = ?, confirmed = 0, "
-            "app_version = ?, kind = ? WHERE id = ?",
+            "UPDATE mobiles SET name = CASE WHEN COALESCE(name_locked, 0) = 1 THEN name ELSE ? END, "
+            "token_hash = ?, last_seen = ?, confirmed = 0, app_version = ?, kind = ? WHERE id = ?",
             (mobile_name, hash_token(mobile_token), now_ms(), app_version or None, kind, mid),
         )
     else:
@@ -847,7 +847,7 @@ def agent_patch_phone(mid):
     if "name" in body:
         name = str(body.get("name") or "").strip()[:64]
         if name:
-            db().execute("UPDATE mobiles SET name = ? WHERE id = ?", (name, mid))
+            db().execute("UPDATE mobiles SET name = ?, name_locked = 1 WHERE id = ?", (name, mid))
     if "primary" in body:
         if bool(body.get("primary")):
             db().execute("UPDATE mobiles SET is_primary = 0 WHERE device_id = ?", (g.device_id,))

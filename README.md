@@ -591,7 +591,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 | Component | Version | Stack |
 |---|---|---|
 | Windows agent | 1.6.0 | C# / .NET 10 WPF |
-| Relay server | 1.3.1 | Python / Flask / SQLite |
+| Relay server | 1.3.2 | Python / Flask / SQLite |
 | Phone app | 1.5.1 (build 15) | Flutter |
 | Wear OS app | 1.3.4 | Kotlin / Compose / Tiles / Complications |
 | Desktop installer | 2.1.0 | WPF setup and agent uninstaller |
