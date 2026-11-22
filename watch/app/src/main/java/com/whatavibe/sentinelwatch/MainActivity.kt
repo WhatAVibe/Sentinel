@@ -3,6 +3,7 @@ package com.whatavibe.sentinelwatch
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -121,7 +122,18 @@ private fun WatchApp() {
     when (screen) {
         "pair" -> PairScreen(store) { paired ->
             session = paired
-            screen = "home"
+            screen = "pending"
+        }
+        "pending" -> session?.let {
+            PendingScreen(
+                session = it,
+                onConfirmed = { screen = "home" },
+                onCancel = {
+                    store.clear()
+                    session = null
+                    screen = "pair"
+                },
+            )
         }
         "code" -> session?.let { CodeScreen(it.secret) { screen = "home" } }
         "settings" -> session?.let {
@@ -142,6 +154,7 @@ private fun WatchApp() {
                 session = it,
                 onCode = { screen = "code" },
                 onSettings = { screen = "settings" },
+                onPending = { screen = "pending" },
                 onSessionLost = {
                     store.clear()
                     session = null
@@ -234,7 +247,13 @@ private fun PairScreen(store: Store, onPaired: (Session) -> Unit) {
 }
 
 @Composable
-private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> Unit, onSessionLost: () -> Unit) {
+private fun HomeScreen(
+    session: Session,
+    onCode: () -> Unit,
+    onSettings: () -> Unit,
+    onPending: () -> Unit,
+    onSessionLost: () -> Unit,
+) {
     val api = remember(session) { Api(session.baseUrl, session.token) }
     var status by remember { mutableStateOf<DeviceStatus?>(null) }
     var message by remember { mutableStateOf("") }
@@ -247,6 +266,10 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
         } catch (e: Exception) {
             if (e is ApiException && e.status == 401) {
                 onSessionLost()
+                return
+            }
+            if (e is ApiException && e.code == "pending_confirmation") {
+                onPending()
                 return
             }
             message = friendlyError(e)
@@ -270,6 +293,10 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
             } catch (e: Exception) {
                 if (e is ApiException && e.status == 401) {
                     onSessionLost()
+                    return@launch
+                }
+                if (e is ApiException && e.code == "pending_confirmation") {
+                    onPending()
                     return@launch
                 }
                 message = friendlyError(e)
@@ -392,6 +419,99 @@ private fun ActionButton(label: String, enabled: Boolean = true, onClick: () -> 
 }
 
 @Composable
+private fun PendingScreen(session: Session, onConfirmed: () -> Unit, onCancel: () -> Unit) {
+    val api = remember(session) { Api(session.baseUrl, session.token) }
+    var code by remember { mutableStateOf(Totp.now(session.secret)) }
+    var seconds by remember { mutableStateOf(Totp.secondsRemaining()) }
+    var status by remember { mutableStateOf("Confirming with the relay…") }
+    var checking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun check() {
+        try {
+            val ok = withContext(Dispatchers.IO) { api.confirmed() }
+            if (ok) {
+                onConfirmed()
+                return
+            }
+            status = "Waiting for the PC to approve"
+        } catch (e: Exception) {
+            if (e is ApiException && e.status == 401) {
+                onCancel()
+                return
+            }
+            status = "Waiting for the relay"
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            code = Totp.now(session.secret)
+            seconds = Totp.secondsRemaining()
+            delay(1000)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            check()
+            delay(4000)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("Sentinel", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("Waiting for your PC", fontSize = 11.sp, color = Muted)
+        Spacer(Modifier.height(6.dp))
+        Text("Type this code on the PC prompt", fontSize = 9.sp, color = Muted, textAlign = TextAlign.Center)
+        Text(
+            code.chunked(3).joinToString(" "),
+            fontSize = 28.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 2.sp,
+        )
+        Text("$seconds s", fontSize = 10.sp, color = Muted)
+        Spacer(Modifier.height(8.dp))
+        CircularProgressIndicator(modifier = Modifier.height(18.dp), strokeWidth = 2.dp)
+        Text(status, fontSize = 9.sp, color = Muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = {
+                if (checking) return@Button
+                checking = true
+                scope.launch {
+                    try {
+                        check()
+                    } finally {
+                        checking = false
+                    }
+                }
+            },
+            enabled = !checking,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(if (checking) "Checking…" else "Check again") }
+        Text(
+            "Cancel",
+            fontSize = 11.sp,
+            color = Muted,
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .fillMaxWidth()
+                .clickable { onCancel() },
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
 private fun CodeScreen(secret: String, onBack: () -> Unit) {
     var code by remember { mutableStateOf(Totp.now(secret)) }
     var seconds by remember { mutableStateOf(Totp.secondsRemaining()) }
@@ -449,7 +569,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.3.3", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 1.3.4", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }

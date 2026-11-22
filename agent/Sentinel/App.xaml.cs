@@ -16,6 +16,9 @@ public partial class App : Application
     private Mutex? _mutex;
     private EventWaitHandle? _showSignal;
     private MainWindow? _main;
+    private DispatcherTimer? _deviceWatcher;
+    private readonly HashSet<string> _promptedDevices = new();
+    private bool _confirmOpen;
     private bool _shuttingDown;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -123,6 +126,51 @@ public partial class App : Application
         }
 
         StartShowListener();
+        StartDeviceWatcher();
+    }
+
+    private void StartDeviceWatcher()
+    {
+        _deviceWatcher = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _deviceWatcher.Tick += async (_, _) => await CheckPendingDevicesAsync();
+        _deviceWatcher.Start();
+    }
+
+    private async Task CheckPendingDevicesAsync()
+    {
+        if (_shuttingDown || _confirmOpen || !Host.Config.Paired) return;
+        if (string.IsNullOrEmpty(Host.Api.Token) || SecureLock.Active) return;
+        if (Windows.OfType<Window>().Any(w => w.IsVisible &&
+                w is PhoneLinkWindow or PairWindow or TutorialWindow or CodePromptWindow))
+            return;
+        List<Models.PhoneDto> phones;
+        try
+        {
+            phones = await Host.Api.GetPhonesAsync(CancellationToken.None);
+        }
+        catch
+        {
+            return;
+        }
+        var pending = phones.FirstOrDefault(p => !p.Confirmed && !_promptedDevices.Contains(p.Id));
+        foreach (var phone in phones.Where(p => p.Confirmed)) _promptedDevices.Remove(phone.Id);
+        if (pending == null) return;
+        _promptedDevices.Add(pending.Id);
+        _confirmOpen = true;
+        try
+        {
+            var window = new DeviceConfirmWindow(Host, pending);
+            if (_main is { IsVisible: true }) window.Owner = _main;
+            var confirmed = window.ShowDialog() == true;
+            Tray?.ShowBalloon(confirmed ? "Device confirmed" : "Device still pending",
+                confirmed
+                    ? $"{pending.Name} can now control this PC."
+                    : $"{pending.Name} stays locked until you enter its code in Settings.");
+        }
+        finally
+        {
+            _confirmOpen = false;
+        }
     }
 
     public void ShowDashboard()

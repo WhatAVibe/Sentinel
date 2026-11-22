@@ -4,6 +4,7 @@ import 'core/app_state.dart';
 import 'core/flipper_bridge.dart';
 import 'screens/lock_screen.dart';
 import 'screens/pair_screen.dart';
+import 'screens/pending_confirmation.dart';
 import 'screens/shell.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -79,6 +80,7 @@ class _Root extends StatelessWidget {
     final state = context.watch<AppState>();
     if (state.booting) return const _Splash();
     if (!state.paired) return const PairScreen();
+    if (state.pendingConfirmation) return const PendingConfirmationScreen();
     if (state.locked) return const LockScreen();
     return const Shell();
   }

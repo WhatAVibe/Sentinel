@@ -29,6 +29,7 @@ class AppState extends ChangeNotifier {
   bool connected = false;
   bool relayOnline = false;
   bool socketLive = false;
+  bool pendingConfirmation = false;
   bool busy = false;
   bool biometricEnabled = true;
   bool canUseBiometrics = false;
@@ -46,6 +47,7 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<PushEvent>? _subscription;
   Timer? _poll;
+  Timer? _confirmPoll;
   int _lastEventId = 0;
 
   bool get paired => session != null;
@@ -87,6 +89,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> attach(Session value, {bool connect = true, bool persist = true}) async {
     _teardownClient();
+    _confirmPoll?.cancel();
+    _confirmPoll = null;
+    pendingConfirmation = false;
     session = value;
     device = null;
     events = [];
@@ -141,9 +146,40 @@ class AppState extends ChangeNotifier {
         await handleServerUnpair();
         return;
       }
+      if (isPendingConfirmation(error)) {
+        awaitConfirmation();
+        return;
+      }
       relayOnline = false;
       lastError = describeError(error);
       notifyListeners();
+    }
+  }
+
+  static bool isPendingConfirmation(Object error) =>
+      error is ApiError && error.code == 'pending_confirmation';
+
+  void awaitConfirmation() {
+    pendingConfirmation = true;
+    relayOnline = true;
+    lastError = null;
+    _confirmPoll ??= Timer.periodic(const Duration(seconds: 3), (_) => checkConfirmation());
+    notifyListeners();
+  }
+
+  Future<void> checkConfirmation() async {
+    final current = client;
+    if (current == null) return;
+    try {
+      if (!await current.fetchConfirmed()) return;
+      _confirmPoll?.cancel();
+      _confirmPoll = null;
+      pendingConfirmation = false;
+      Notifier.show('Device confirmed', 'Your PC confirmed this device. Welcome back.');
+      await _initialLoad();
+      if (pendingConfirmation) notifyListeners();
+    } catch (_) {
+      // keep waiting; the relay may be briefly unreachable
     }
   }
 
@@ -238,6 +274,10 @@ class AppState extends ChangeNotifier {
         await handleServerUnpair();
         return;
       }
+      if (isPendingConfirmation(error)) {
+        awaitConfirmation();
+        return;
+      }
       relayOnline = false;
       lastError = describeError(error);
     }
@@ -246,6 +286,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> handleServerUnpair() async {
     await store.clearSessions();
+    _confirmPoll?.cancel();
+    _confirmPoll = null;
+    pendingConfirmation = false;
     _teardownClient();
     sessions = [];
     session = null;
@@ -426,6 +469,7 @@ class AppState extends ChangeNotifier {
     shots = [];
     connected = false;
     relayOnline = false;
+    pendingConfirmation = false;
     if (sessions.isEmpty) {
       await store.saveActiveId(null);
       session = null;
@@ -514,6 +558,8 @@ class AppState extends ChangeNotifier {
     _subscription = null;
     _poll?.cancel();
     _poll = null;
+    _confirmPoll?.cancel();
+    _confirmPoll = null;
     client?.dispose();
     client = null;
     socketLive = false;

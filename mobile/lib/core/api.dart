@@ -97,6 +97,7 @@ abstract class SentinelClient {
   bool get isDirect;
   Stream<PushEvent> get stream;
   Future<Device> fetchDevice();
+  Future<bool> fetchConfirmed();
   Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200});
   Future<List<Shot>> fetchScreenshots({int beforeTs = 0, int limit = 120});
   Future<CommandResult> sendCommand(String type, {Map<String, dynamic>? args, String? code});
@@ -221,6 +222,12 @@ class RelayClient implements SentinelClient {
   Future<Device> fetchDevice() async {
     final body = await _api.get('/api/v1/me');
     return Device.fromJson(asMap(body['device']));
+  }
+
+  @override
+  Future<bool> fetchConfirmed() async {
+    final body = await _api.get('/api/v1/me');
+    return asBool(asMap(body['mobile'])['confirmed'], true);
   }
 
   @override
@@ -375,6 +382,9 @@ class DirectClient implements SentinelClient {
     final body = await _api.get('/local/status');
     return Device.fromJson(asMap(body['device']));
   }
+
+  @override
+  Future<bool> fetchConfirmed() async => true;
 
   @override
   Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200}) async {

@@ -36,9 +36,9 @@ class Api(private val baseUrl: String, private val token: String? = null, privat
         connection.connectTimeout = timeoutMs
         connection.readTimeout = timeoutMs + 4000
         connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("User-Agent", "SentinelWatch/1.3.3")
+        connection.setRequestProperty("User-Agent", "SentinelWatch/1.3.4")
         connection.setRequestProperty("X-Device-Name", DEVICE_NAME)
-        connection.setRequestProperty("X-App-Version", "1.3.3")
+        connection.setRequestProperty("X-App-Version", "1.3.4")
         if (!token.isNullOrEmpty()) {
             connection.setRequestProperty("Authorization", "Bearer $token")
         }
@@ -64,8 +64,12 @@ class Api(private val baseUrl: String, private val token: String? = null, privat
         request("POST", "/api/v1/pair/lookup", JSONObject().put("pair_code", code))
             .getString("request_id")
 
-    fun approve(requestId: String, code: String, name: String, uid: String): PairResult {
-        val body = JSONObject()
+    fun confirmed(): Boolean {
+        val result = request("GET", "/api/v1/me")
+        return result.optJSONObject("mobile")?.optBoolean("confirmed", true) ?: true
+    }
+
+    fun approve(requestId: String, code: String, name: String, uid: String): PairResult {        val body = JSONObject()
             .put("request_id", requestId)
             .put("pair_code", code)
             .put("mobile_name", name)
