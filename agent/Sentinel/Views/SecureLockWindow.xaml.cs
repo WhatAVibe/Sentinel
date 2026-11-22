@@ -40,6 +40,20 @@ public partial class SecureLockWindow : Window
             ? Visibility.Collapsed
             : Visibility.Visible;
         MasterPanel.Visibility = App.Host.HasMasterPassword ? Visibility.Visible : Visibility.Collapsed;
+        OtherOptionsButton.Visibility =
+            SecurityKey.Current(App.Host.Config) != null || App.Host.HasMasterPassword
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+    }
+
+    private void ToggleOptions_Click(object sender, RoutedEventArgs e)
+    {
+        OtherPanel.Visibility = OtherPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        OtherOptionsButton.Content = OtherPanel.Visibility == Visibility.Visible
+            ? "Hide other options"
+            : "Other options";
     }
 
     public void CloseAuthorized()
@@ -115,7 +129,7 @@ public partial class SecureLockWindow : Window
     {
         try
         {
-            if (!SecureLock.Active) return;
+            if (!SecureLock.Active || SecureLock.PromptActive) return;
             Topmost = false;
             Topmost = true;
             if (!IsActive) Activate();
@@ -175,24 +189,31 @@ public partial class SecureLockWindow : Window
     {
         KeyButton.IsEnabled = false;
         ErrorText.Visibility = Visibility.Collapsed;
-        KeyHintText.Text = "Touch your security key…";
-        KeyHintText.Visibility = Visibility.Visible;
-        var (ok, error) = await SecurityKey.VerifyAsync(App.Host);
-        KeyButton.IsEnabled = true;
-        if (!ok)
+        SecureLock.PromptActive = true;
+        Topmost = false;
+        try
         {
-            KeyHintText.Text = error == "cancelled"
-                ? "Key touch cancelled. Try again."
-                : $"Security key check failed ({error}).";
-            return;
+            var (ok, error) = await SecurityKey.VerifyAsync(App.Host);
+            if (!ok)
+            {
+                ShowError(error == "cancelled"
+                    ? "Key touch cancelled. Try again."
+                    : $"Security key check failed ({error}).");
+                return;
+            }
+            if (App.Host.Config.RequirePhonePresence && !App.Host.Adb.TrustedPresent)
+            {
+                ShowError("Phone presence is required. Connect your phone over ADB first.");
+                return;
+            }
+            App.Host.ExitSecureLock("security key");
         }
-        if (App.Host.Config.RequirePhonePresence && !App.Host.Adb.TrustedPresent)
+        finally
         {
-            KeyHintText.Text = "Phone presence is required. Connect your phone over ADB first.";
-            return;
+            SecureLock.PromptActive = false;
+            try { Topmost = true; } catch { }
+            KeyButton.IsEnabled = true;
         }
-        KeyHintText.Visibility = Visibility.Collapsed;
-        App.Host.ExitSecureLock("security key");
     }
 
     private const uint SWP_NOSIZE = 0x0001;

@@ -12,6 +12,7 @@ public static class SecureLock
         "secure-lock.json");
 
     public static bool Active { get; private set; }
+    public static bool PromptActive { get; set; }
     public static string Message { get; private set; } = "";
     public static IntPtr OverlayHandle { get; set; }
 

@@ -90,7 +90,9 @@ public static class SecurityKey
         return app.Dispatcher.InvokeAsync(() =>
         {
             var window = new SecurityKeyWindow(register, credentialId);
-            if (app.MainWindow != null && app.MainWindow.IsVisible) window.Owner = app.MainWindow;
+            var owner = app.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
+            if (owner != null && owner is not SecurityKeyWindow) window.Owner = owner;
+            window.Topmost = SecureLock.Active;
             window.ShowDialog();
             return window.Outcome;
         }).Task;

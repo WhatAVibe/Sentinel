@@ -7,46 +7,53 @@
     <Grid>
         <Canvas x:Name="WallpaperCanvas" ClipToBounds="True" Background="#070A0F" />
         <Border Background="#4D000000" />
-        <Border Width="440" CornerRadius="22" Background="#F012161C" BorderBrush="#2A3340"
-                BorderThickness="1" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Border Width="400" CornerRadius="20" Background="#F012161C" BorderBrush="#2A3340"
+                BorderThickness="1" Padding="26" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="46" Height="46" CornerRadius="14" ClipToBounds="True">
+                    <Border Width="42" Height="42" CornerRadius="13" ClipToBounds="True">
                         <Border.Background>
                             <ImageBrush ImageSource="pack://application:,,,/Assets/logo.png" Stretch="UniformToFill" />
                         </Border.Background>
                     </Border>
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="This PC is locked" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="This PC is locked" FontSize="17" FontWeight="SemiBold" />
                         <TextBlock Text="Sentinel secure lock" FontSize="11" Foreground="{StaticResource Muted}" />
                     </StackPanel>
                 </StackPanel>
 
-                <TextBlock x:Name="MessageText" FontSize="13" TextWrapping="Wrap" LineHeight="19"
-                           Margin="0,20,0,0" Foreground="{StaticResource Text}" />
+                <TextBlock x:Name="MessageText" FontSize="12" TextWrapping="Wrap" LineHeight="18"
+                           Margin="0,16,0,0" Foreground="{StaticResource Text}" />
 
-                <TextBlock Text="Enter the 6-digit code from your phone to unlock."
-                           FontSize="11" Foreground="{StaticResource Muted}" Margin="0,18,0,8" TextWrapping="Wrap" />
-                <TextBox x:Name="CodeBox" FontFamily="Consolas" FontSize="28" Padding="14,10"
+                <TextBlock Text="Enter the 6-digit code to unlock."
+                           FontSize="11" Foreground="{StaticResource Muted}" Margin="0,14,0,6" />
+                <TextBox x:Name="CodeBox" FontFamily="Consolas" FontSize="26" Padding="12,9"
                          TextAlignment="Center" MaxLength="6" BorderThickness="1"
                          Background="#0E1218" Foreground="{StaticResource Text}"
                          BorderBrush="{StaticResource Line}" />
                 <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}" FontSize="12"
-                           Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
-                <Button Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"
-                        Padding="18,11" Click="Unlock_Click" IsDefault="True" />
-                <TextBlock x:Name="KeyHintText" FontSize="11" Foreground="{StaticResource Muted}"
-                           Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
-                <Button x:Name="KeyButton" Content="Use security key" Style="{StaticResource GhostButton}"
-                        Margin="0,8,0,0" Padding="18,10" Click="Key_Click" />
-                <StackPanel x:Name="MasterPanel" Margin="0,10,0,0" Visibility="Collapsed">
-                    <TextBlock Text="Or use your recovery password" FontSize="11"
-                               Foreground="{StaticResource Muted}" Margin="0,0,0,6" />
-                    <PasswordBox x:Name="MasterBox" Padding="10,8" />
-                    <Button Content="Unlock with recovery password" Style="{StaticResource GhostButton}"
-                            Margin="0,8,0,0" Padding="18,10" Click="MasterUnlock_Click" />
+                           Margin="0,6,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
+                <Button Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,12,0,0"
+                        Padding="18,10" Click="Unlock_Click" IsDefault="True" />
+
+                <Button x:Name="OtherOptionsButton" Content="Other options" Style="{StaticResource GhostButton}"
+                        Margin="0,10,0,0" Padding="14,8" Click="ToggleOptions_Click" />
+                <StackPanel x:Name="OtherPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                    <Border x:Name="MasterPanel" Background="#0E1218" BorderBrush="{StaticResource Line}"
+                            BorderThickness="1" CornerRadius="10" Padding="12" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="Recovery password" FontSize="11"
+                                       Foreground="{StaticResource Muted}" Margin="0,0,0,6" />
+                            <PasswordBox x:Name="MasterBox" Padding="10,8" />
+                            <Button Content="Unlock with recovery password" Style="{StaticResource GhostButton}"
+                                    Margin="0,8,0,0" Padding="14,8" Click="MasterUnlock_Click" />
+                        </StackPanel>
+                    </Border>
+                    <Button x:Name="KeyButton" Content="Use security key" Style="{StaticResource GhostButton}"
+                            Margin="0,8,0,0" Padding="14,8" Click="Key_Click" Visibility="Collapsed" />
                 </StackPanel>
-                <TextBlock Text="Input is restricted while this screen is active. Ctrl+Alt+Delete still belongs to Windows."
+
+                <TextBlock Text="Ctrl+Alt+Delete still belongs to Windows."
                            FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
                            TextAlignment="Center" Margin="0,14,0,0" />
             </StackPanel>
