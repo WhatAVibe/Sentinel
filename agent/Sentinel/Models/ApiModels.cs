@@ -153,7 +153,7 @@ public sealed class PhoneDto
     [JsonPropertyName("kind")] public string Kind { get; set; } = "phone";
 
     [JsonIgnore] public string CreatedText => CreatedAt == 0
-        ? "â€”"
+        ? "—"
         : DateTimeOffset.FromUnixTimeMilliseconds(CreatedAt).LocalDateTime.ToString("dd MMM yyyy HH:mm");
 
     [JsonIgnore] public string LastSeenText => LastSeen == null

@@ -175,7 +175,7 @@ public partial class SecureLockWindow : Window
     {
         KeyButton.IsEnabled = false;
         ErrorText.Visibility = Visibility.Collapsed;
-        KeyHintText.Text = "Touch your security keyâ€¦";
+        KeyHintText.Text = "Touch your security key…";
         KeyHintText.Visibility = Visibility.Visible;
         var (ok, error) = await SecurityKey.VerifyAsync(App.Host);
         KeyButton.IsEnabled = true;

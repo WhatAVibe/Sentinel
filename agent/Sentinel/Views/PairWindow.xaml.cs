@@ -35,14 +35,14 @@ public partial class PairWindow : Window
         }
 
         ConnectButton.IsEnabled = false;
-        StatusText.Text = "Contacting serverâ€¦";
+        StatusText.Text = "Contacting server…";
         try
         {
             var insecure = InsecureCheck.IsChecked == true;
             var health = await ApiClient.PingAsync(url, insecure, CancellationToken.None);
             if (health == null) throw new InvalidOperationException("No health response");
 
-            StatusText.Text = $"Connected to {health.Name}. Creating pairing codeâ€¦";
+            StatusText.Text = $"Connected to {health.Name}. Creating pairing code…";
             _client?.Dispose();
             _client = new ApiClient { BaseUrl = url, AllowInsecureTls = insecure };
             _request = await _client.CreatePairAsync(Environment.MachineName, App.Host.Config.DeviceId, CancellationToken.None);
@@ -55,7 +55,7 @@ public partial class PairWindow : Window
 
             ShowPairing();
             StartTimer();
-            StatusText.Text = "Waiting for the phone to approveâ€¦";
+            StatusText.Text = "Waiting for the phone to approve…";
         }
         catch (Exception ex)
         {
@@ -149,7 +149,7 @@ public partial class PairWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Waitingâ€¦ (" + ex.Message + ")";
+            StatusText.Text = "Waiting… (" + ex.Message + ")";
         }
         finally
         {

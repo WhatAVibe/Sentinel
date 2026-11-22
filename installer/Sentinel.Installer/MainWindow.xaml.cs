@@ -1,11 +1,14 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using QRCoder;
 
 namespace Sentinel.Installer;
 
@@ -74,6 +77,7 @@ public partial class MainWindow : Window
         _pairTimer.Tick += async (_, _) => await PollPairAsync();
         if (_updateMode)
         {
+            ManagePanel.Visibility = Visibility.Visible;
             StartupCheck.IsChecked = InstallerCore.IsStartupEnabled();
             UpdatesCheck.IsChecked = InstallerCore.ReadConfigBool(_installDir, "CheckForUpdates", true);
         }
@@ -220,7 +224,8 @@ public partial class MainWindow : Window
             _pairRequestId = response.TryGetProperty("request_id", out var rid) ? rid.GetString() ?? "" : "";
             _pairRequestToken = response.TryGetProperty("request_token", out var token) ? token.GetString() ?? "" : "";
             PairCodeText.Text = response.TryGetProperty("pair_code", out var code) ? code.GetString() ?? "" : "";
-            PairStatusText.Text = "Open Sentinel on the device and enter this code. Waiting for approval…";
+            PairStatusText.Text = "Open Sentinel on the device and enter this code, or scan the QR code. Waiting for approval…";
+            RenderPairQr(NormalizeUrl(ServerBox.Text), _pairRequestId, PairCodeText.Text);
             _pairTimer.Start();
         }
         catch (Exception ex)
@@ -301,7 +306,69 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SkipPair_Click(object sender, RoutedEventArgs e)
+    private void RenderPairQr(string serverUrl, string requestId, string pairCode)
+    {
+        try
+        {
+            var payload = JsonSerializer.Serialize(new
+            {
+                v = 1,
+                u = serverUrl,
+                r = requestId,
+                c = pairCode,
+                n = Environment.MachineName
+            });
+            using var generator = new QRCodeGenerator();
+            using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
+            var png = new PngByteQRCode(data).GetGraphic(8);
+            using var stream = new MemoryStream(png);
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = stream;
+            image.EndInit();
+            image.Freeze();
+            PairQr.Source = image;
+            PairQr.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            PairQr.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void UpdateMode_Click(object sender, RoutedEventArgs e)
+    {
+        _index = _steps.IndexOf("Location");
+        ShowStep();
+    }
+
+    private void UninstallExisting_Click(object sender, RoutedEventArgs e)
+    {
+        var agent = InstallerCore.AgentExe(_installDir);
+        if (!File.Exists(agent))
+        {
+            FooterStatus.Text = "No installed agent found at that location.";
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = agent,
+                Arguments = "--uninstall",
+                WorkingDirectory = _installDir,
+                UseShellExecute = true
+            });
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            FooterStatus.Text = "Could not start the uninstaller: " + ex.Message;
+        }
+    }
+
+    private async void SkipPair_Click(object sender, RoutedEventArgs e)
     {
         _skippedPair = true;
         PairStatusText.Text = "Skipped. Link a device later from Settings → Linked devices.";
@@ -315,34 +382,52 @@ public partial class MainWindow : Window
         FooterStatus.Text = "Installing…";
         try
         {
-            InstallerCore.StopAgent();
-            await Task.Delay(400);
+            InstallProgress.Visibility = Visibility.Visible;
+            InstallProgress.Value = 5;
+            ProgressText.Text = "Stopping the running agent…";
+            await Task.Run(InstallerCore.StopAgent);
+            await Task.Delay(300);
             Directory.CreateDirectory(_installDir);
-            InstallerCore.InstallPayload(_installDir);
 
+            ProgressText.Text = "Extracting Sentinel…";
+            InstallProgress.Value = 15;
+            await Task.Run(() => InstallerCore.InstallPayload(_installDir));
+            InstallProgress.Value = 65;
+
+            var startup = StartupCheck.IsChecked == true;
+            var updates = UpdatesCheck.IsChecked == true;
             if (!_updateMode)
             {
-                InstallerCore.WriteConfig(
-                    _installDir,
-                    NormalizeUrl(ServerBox.Text),
-                    _deviceId,
-                    _agentToken,
-                    _totpSecret,
-                    MasterBox.Password,
-                    UpdatesCheck.IsChecked == true,
-                    tutorialDone: false);
+                ProgressText.Text = "Writing settings and pairing…";
+                var serverUrl = NormalizeUrl(ServerBox.Text);
+                var deviceId = _deviceId;
+                var agentToken = _agentToken;
+                var totpSecret = _totpSecret;
+                var master = MasterBox.Password;
+                await Task.Run(() => InstallerCore.WriteConfig(
+                    _installDir, serverUrl, deviceId, agentToken, totpSecret, master, updates, startup, false));
             }
             else
             {
-                SetConfigBool(_installDir, "CheckForUpdates", UpdatesCheck.IsChecked == true);
+                ProgressText.Text = "Updating settings…";
+                await Task.Run(() =>
+                {
+                    SetConfigBool(_installDir, "CheckForUpdates", updates);
+                    SetConfigBool(_installDir, "StartWithWindows", startup);
+                });
             }
+            InstallProgress.Value = 80;
 
-            InstallerCore.ConfigureStartup(_installDir, StartupCheck.IsChecked == true);
+            ProgressText.Text = "Registering startup and the uninstaller…";
+            InstallerCore.ConfigureStartup(_installDir, startup);
             InstallerCore.RegisterUninstall(_installDir);
-            InstallerCore.CopySelfIntoInstall(_installDir);
+            InstallProgress.Value = 95;
+
             FooterStatus.Text = "Installed. Starting Sentinel…";
+            ProgressText.Text = "Starting Sentinel…";
             if (LaunchCheck.IsChecked == true) InstallerCore.LaunchAgent(_installDir);
-            await Task.Delay(900);
+            InstallProgress.Value = 100;
+            await Task.Delay(600);
             Close();
             Application.Current.Shutdown();
         }

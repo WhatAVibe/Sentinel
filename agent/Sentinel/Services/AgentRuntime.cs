@@ -140,7 +140,7 @@ public sealed class AgentRuntime : IDisposable
             }
             catch (ApiException ex) when (ex.Status == 401)
             {
-                LastError = "Device token rejected â€” re-pair required";
+                LastError = "Device token rejected — re-pair required";
                 SetStatus("Re-pair");
                 _host.Notify("Re-pair required", "The server rejected this device token.");
                 await SafeDelay(TimeSpan.FromSeconds(30), ct);

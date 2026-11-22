@@ -69,7 +69,7 @@ public partial class ScreenshotsView : UserControl
         if (e.OriginalSource is not DependencyObject source) return;
         var item = FindDataContext<ShotItem>(source);
         if (item == null) return;
-        var viewer = new ImageViewerWindow(item.Path, item.Caption + " Â· " + item.TimeText)
+        var viewer = new ImageViewerWindow(item.Path, item.Caption + " · " + item.TimeText)
         {
             Owner = Window.GetWindow(this)
         };

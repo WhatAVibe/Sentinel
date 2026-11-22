@@ -24,7 +24,7 @@ public partial class UninstallWindow : Window
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
         UninstallButton.IsEnabled = false;
-        StatusText.Text = "Stopping Sentinelâ€¦";
+        StatusText.Text = "Stopping Sentinel…";
         InstallerCore.StopAgent();
 
         if (UnpairCheck.IsChecked == true)
@@ -32,7 +32,7 @@ public partial class UninstallWindow : Window
             var (url, token) = InstallerCore.ReadConfig(_installDir);
             if (!string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(token))
             {
-                StatusText.Text = "Removing this PC from the relayâ€¦";
+                StatusText.Text = "Removing this PC from the relay…";
                 try
                 {
                     await InstallerCore.PurgeRelayAsync(url, token);
@@ -44,12 +44,12 @@ public partial class UninstallWindow : Window
             }
         }
 
-        StatusText.Text = "Removing startup and registry entriesâ€¦";
+        StatusText.Text = "Removing startup and registry entries…";
         InstallerCore.RemoveUninstall();
 
         if (WipeCheck.IsChecked == true)
         {
-            StatusText.Text = "Deleting dataâ€¦";
+            StatusText.Text = "Deleting data…";
             TryDelete(_installDir);
             var legacy = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sentinel");
@@ -63,7 +63,7 @@ public partial class UninstallWindow : Window
             TryDelete(Path.Combine(_installDir, "Sentinel.runtimeconfig.json"));
         }
 
-        StatusText.Text = "Removing the install folderâ€¦";
+        StatusText.Text = "Removing the install folder…";
         await Task.Delay(400);
         Close();
         if (WipeCheck.IsChecked == true) ScheduleDelete(_installDir);

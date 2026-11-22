@@ -33,7 +33,7 @@
                             </Border>
                         </StackPanel>
                         <TextBlock Margin="0,7,0,0" Style="{StaticResource MutedText}">
-                            <Run Text="{Binding UserName}" /><Run Text=" Â· " /><Run Text="{Binding Hostname}" />
+                            <Run Text="{Binding UserName}" /><Run Text=" · " /><Run Text="{Binding Hostname}" />
                         </TextBlock>
 
                         <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
@@ -100,10 +100,10 @@
                             <TextBlock Text="Away mode active" Foreground="{StaticResource Warning}" FontWeight="SemiBold"
                                        FontSize="14" />
                         </StackPanel>
-                        <TextBlock Text="Screensaver engaged Â· activity capture running Â· disarm requires a 2FA code"
+                        <TextBlock Text="Screensaver engaged · activity capture running · disarm requires a 2FA code"
                                    Style="{StaticResource MutedText}" Margin="0,6,0,0" />
                     </StackPanel>
-                    <Button Content="Disarmâ€¦" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
+                    <Button Content="Disarm…" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Padding="16,9" Click="Disarm_Click" />
                 </Grid>
             </Border>
@@ -127,7 +127,13 @@
                            HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
 
-            <UniformGrid Columns="4" Rows="2">
+            <Border Background="#241E12" BorderBrush="#4A3A1E" BorderThickness="1" CornerRadius="12"
+                    Padding="14,10" Margin="0,0,0,12" Visibility="{Binding LockedVisibility}">
+                <TextBlock Text="Link a device to enable these actions. Pairing is in Settings → Linked devices."
+                           Foreground="{StaticResource Warning}" FontSize="11" TextWrapping="Wrap" />
+            </Border>
+
+            <UniformGrid Columns="4" Rows="2" IsEnabled="{Binding ActionsEnabled}">
                 <Button Style="{StaticResource ActionTile}" Tag="lock" Click="Action_Click" Margin="0,0,10,10">
                     <StackPanel>
                         <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource Accent}" />
@@ -199,7 +205,7 @@
                     <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Activity}" />
                     </ScrollViewer>
-                    <TextBlock Text="Nothing logged yet â€” arm away mode, take a screenshot, or unlock the PC."
+                    <TextBlock Text="Nothing logged yet — arm away mode, take a screenshot, or unlock the PC."
                                Style="{StaticResource MutedText}" Margin="4,16,4,18"
                                Visibility="{Binding EmptyActivityVisibility}" />
                 </Grid>

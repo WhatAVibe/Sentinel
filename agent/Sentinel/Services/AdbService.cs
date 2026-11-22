@@ -5,7 +5,7 @@ namespace Sentinel.Services;
 
 public sealed record AdbDevice(string Serial, string State, string Model, string Product, string TransportId)
 {
-    public string Label => string.IsNullOrWhiteSpace(Model) ? Serial : $"{Model.Replace('_', ' ')} Â· {Serial}";
+    public string Label => string.IsNullOrWhiteSpace(Model) ? Serial : $"{Model.Replace('_', ' ')} · {Serial}";
     public bool Usable => State == "device";
 }
 

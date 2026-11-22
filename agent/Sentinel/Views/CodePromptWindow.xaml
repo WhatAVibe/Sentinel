@@ -31,7 +31,7 @@
             </StackPanel>
         </StackPanel>
 
-        <TextBlock Grid.Row="2" Text="Open Sentinel on your phone â†’ Security â†’ live code. Any TOTP authenticator works."
+        <TextBlock Grid.Row="2" Text="Open Sentinel on your phone → Security → live code. Any TOTP authenticator works."
                    Style="{StaticResource MutedText}" VerticalAlignment="Bottom" TextWrapping="Wrap" />
 
         <Grid Grid.Row="3" Margin="0,14,0,0">

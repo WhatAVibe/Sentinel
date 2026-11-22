@@ -148,6 +148,7 @@ public static class InstallerCore
         string totpSecret,
         string masterPassword,
         bool checkForUpdates,
+        bool startWithWindows,
         bool tutorialDone)
     {
         var config = new Dictionary<string, object?>
@@ -161,6 +162,7 @@ public static class InstallerCore
             ["ProtectedSecurityKey"] = "",
             ["ProtectedMasterPassword"] = ProtectMasterPassword(masterPassword),
             ["CheckForUpdates"] = checkForUpdates,
+            ["StartWithWindows"] = startWithWindows,
             ["TutorialDone"] = tutorialDone
         };
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
@@ -207,7 +209,7 @@ public static class InstallerCore
         key.SetValue("Publisher", "WhatAVibe");
         key.SetValue("InstallLocation", dir);
         key.SetValue("DisplayIcon", AgentExe(dir));
-        key.SetValue("UninstallString", $"\"{Path.Combine(dir, "Sentinel Setup.exe")}\" --uninstall");
+        key.SetValue("UninstallString", $"\"{AgentExe(dir)}\" --uninstall");
         key.SetValue("NoModify", 1, RegistryValueKind.DWord);
         key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
     }

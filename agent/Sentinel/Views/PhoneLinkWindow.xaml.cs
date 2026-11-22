@@ -41,7 +41,7 @@ public partial class PhoneLinkWindow : Window
             image.EndInit();
             image.Freeze();
             QrImage.Source = image;
-            StatusText.Text = $"Server {url} Â· code {link.PairCode}";
+            StatusText.Text = $"Server {url} · code {link.PairCode}";
         }
         catch (Exception ex)
         {

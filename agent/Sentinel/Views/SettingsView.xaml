@@ -191,16 +191,16 @@
                                Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                     <RadioButton x:Name="PowerSilent" Tag="silent" GroupName="PowerMode" Margin="0,12,0,0"
                                  Foreground="{StaticResource Text}" FontSize="13"
-                                 Content="Silent â€” run it immediately" Checked="PowerMode_Changed" />
+                                 Content="Silent — run it immediately" Checked="PowerMode_Changed" />
                     <RadioButton x:Name="PowerNotify" Tag="notify" GroupName="PowerMode" Margin="0,8,0,0"
                                  Foreground="{StaticResource Text}" FontSize="13"
-                                 Content="Notify â€” show a message, then run it" Checked="PowerMode_Changed" />
+                                 Content="Notify — show a message, then run it" Checked="PowerMode_Changed" />
                     <RadioButton x:Name="PowerConfirm" Tag="confirm" GroupName="PowerMode" Margin="0,8,0,0"
                                  Foreground="{StaticResource Text}" FontSize="13"
-                                 Content="Confirm â€” allow or deny at the PC (30 s auto-deny)" Checked="PowerMode_Changed" />
+                                 Content="Confirm — allow or deny at the PC (30 s auto-deny)" Checked="PowerMode_Changed" />
                     <TextBlock Text="Popup / confirmation text" Style="{StaticResource MutedText}" Margin="0,14,0,5" />
                     <TextBox x:Name="PowerMessageBox" Padding="10,8" LostFocus="PowerMessage_LostFocus" />
-                    <TextBlock Text="Use {action} where the verb should go, e.g. â€œYour phone asked to {action} this PC.â€"
+                    <TextBlock Text="Use {action} where the verb should go, e.g. “Your phone asked to {action} this PC.â€"
                                Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
                     <WrapPanel Margin="0,10,0,0">
                         <StackPanel Orientation="Horizontal">

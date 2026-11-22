@@ -6,11 +6,17 @@ namespace Sentinel.Views;
 
 public partial class DashboardView : UserControl
 {
+    private readonly System.Windows.Threading.DispatcherTimer _metricsTimer;
+
     public DashboardView()
     {
         InitializeComponent();
         DataContext = UiState.I;
         UiState.I.UpdateFromDevice(App.Host.BuildDeviceSnapshot());
+        _metricsTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _metricsTimer.Tick += (_, _) => UiState.I.UpdateMetrics(SystemMetrics.Collect());
+        Loaded += (_, _) => _metricsTimer.Start();
+        Unloaded += (_, _) => _metricsTimer.Stop();
     }
 
     private async void Action_Click(object sender, RoutedEventArgs e)
@@ -31,7 +37,7 @@ public partial class DashboardView : UserControl
                 {
                     var outcome = await host.CaptureAndUploadAsync("desktop");
                     App.Tray.ShowBalloon("Screenshot", outcome.Ok
-                        ? "Captured all displays â€” open the Screenshots tab."
+                        ? "Captured all displays — open the Screenshots tab."
                         : outcome.Error ?? "Capture failed");
                 }
                 finally

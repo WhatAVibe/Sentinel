@@ -28,12 +28,12 @@ public sealed class TrayService : IDisposable
         _exit = exit;
         _generatedIcon = BuildIcon();
 
-        _statusItem = new ToolStripMenuItem("Startingâ€¦") { Enabled = false };
+        _statusItem = new ToolStripMenuItem("Starting…") { Enabled = false };
         _awayItem = new ToolStripMenuItem("Away mode", null, (_, _) => _ = ToggleAwayAsync())
         {
             CheckOnClick = false
         };
-        _disarmItem = new ToolStripMenuItem("Unlock / disable awayâ€¦", null, (_, _) => _disarm())
+        _disarmItem = new ToolStripMenuItem("Unlock / disable away…", null, (_, _) => _disarm())
         {
             Visible = false
         };
@@ -88,12 +88,12 @@ public sealed class TrayService : IDisposable
     {
         var status = _host.Runtime.Status;
         var paired = _host.Config.Paired;
-        _statusItem.Text = paired ? $"{status} Â· {_host.Config.DeviceName}" : "Not paired";
+        _statusItem.Text = paired ? $"{status} · {_host.Config.DeviceName}" : "Not paired";
         _awayItem.Checked = _host.Away;
         _awayItem.Text = _host.Away ? "Away mode (active)" : "Away mode";
         _disarmItem.Visible = _host.Away;
         _startupItem.Checked = StartupManager.IsEnabled();
-        var text = paired ? $"Sentinel Â· {status}" : "Sentinel Â· not paired";
+        var text = paired ? $"Sentinel · {status}" : "Sentinel · not paired";
         _icon.Text = text.Length > 62 ? text[..62] : text;
     }
 

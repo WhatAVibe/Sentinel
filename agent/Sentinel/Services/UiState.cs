@@ -46,8 +46,8 @@ public sealed class ShotItem : INotifyPropertyChanged
         }
     }
 
-    public string Caption => $"{(string.IsNullOrEmpty(MonitorName) ? "Display " + Monitor : MonitorName)} Â· {Width}Ã—{Height}";
-    public string TimeText => CapturedAt.ToString("dd MMM Â· HH:mm:ss");
+    public string Caption => $"{(string.IsNullOrEmpty(MonitorName) ? "Display " + Monitor : MonitorName)} · {Width}×{Height}";
+    public string TimeText => CapturedAt.ToString("dd MMM · HH:mm:ss");
     public string TriggerText => Trigger.ToUpperInvariant();
 }
 
@@ -71,12 +71,13 @@ public sealed class UiState : INotifyPropertyChanged
     private double _cpu;
     private double _memPercent;
     private string _memText = "";
-    private string _uptimeText = "â€”";
+    private string _uptimeText = "—";
     private int _monitors;
     private string _session = "active";
     private string _lastSeen = "never";
     private int _shotCount;
     private int _eventCount;
+    private int _linkedDevices;
     private string _agentVersion = "agent v" + AgentInfo.Version;
     private string _relayVersion = "relay unknown";
     private string _updateText = "";
@@ -94,7 +95,7 @@ public sealed class UiState : INotifyPropertyChanged
     public string Hostname { get => _hostname; set => Set(ref _hostname, value); }
     public string ServerLabel { get => _serverLabel; set => Set(ref _serverLabel, value); }
     public string ServerUrl { get => _serverUrl; set => Set(ref _serverUrl, value); }
-    public bool Paired { get => _paired; set => Set(ref _paired, value, nameof(Paired), nameof(NotPairedVisibility), nameof(PairedVisibility)); }
+    public bool Paired { get => _paired; set => Set(ref _paired, value, nameof(Paired), nameof(NotPairedVisibility), nameof(PairedVisibility), nameof(ActionsEnabled), nameof(LockedVisibility)); }
     public double Cpu { get => _cpu; set => Set(ref _cpu, value, nameof(Cpu), nameof(CpuText)); }
     public double MemPercent { get => _memPercent; set => Set(ref _memPercent, value, nameof(MemPercent)); }
     public string MemText { get => _memText; set => Set(ref _memText, value); }
@@ -104,6 +105,9 @@ public sealed class UiState : INotifyPropertyChanged
     public string LastSeen { get => _lastSeen; set => Set(ref _lastSeen, value); }
     public int ShotCount { get => _shotCount; set => Set(ref _shotCount, value, nameof(ShotCount), nameof(EmptyShotsVisibility), nameof(ShotsVisibility)); }
     public int EventCount { get => _eventCount; set => Set(ref _eventCount, value, nameof(EventCount), nameof(EmptyActivityVisibility)); }
+    public int LinkedDevices { get => _linkedDevices; set => Set(ref _linkedDevices, value, nameof(LinkedDevices), nameof(ActionsEnabled), nameof(LockedVisibility)); }
+    public bool ActionsEnabled => Paired && LinkedDevices > 0;
+    public Visibility LockedVisibility => ActionsEnabled ? Visibility.Collapsed : Visibility.Visible;
 
     public string AgentVersion { get => _agentVersion; set => Set(ref _agentVersion, value); }
     public string RelayVersion { get => _relayVersion; set => Set(ref _relayVersion, value); }
@@ -124,6 +128,7 @@ public sealed class UiState : INotifyPropertyChanged
         "Live" => CategoryBrush("clipboard"),
         "Direct" => CategoryBrush("screenshot"),
         "Connecting" => CategoryBrush("usb"),
+        "Not paired" => CategoryBrush("system"),
         _ => CategoryBrush("system")
     };
 
@@ -160,7 +165,7 @@ public sealed class UiState : INotifyPropertyChanged
     {
         var detail = "";
         if (data.Detail is { Count: > 0 })
-            detail = string.Join("  Â·  ", data.Detail.Where(kv => kv.Value != null).Select(kv => $"{kv.Key}: {kv.Value}"));
+            detail = string.Join("  ·  ", data.Detail.Where(kv => kv.Value != null).Select(kv => $"{kv.Key}: {kv.Value}"));
         AddActivity(new ActivityItem
         {
             Time = DateTimeOffset.FromUnixTimeMilliseconds(data.Ts).LocalDateTime,
@@ -238,6 +243,7 @@ public sealed class UiState : INotifyPropertyChanged
         {
             DeviceName = device.Name;
             Away = device.Away;
+            if (device.LinkedDevices > 0) LinkedDevices = device.LinkedDevices;
             if (device.Metrics != null)
             {
                 Cpu = device.Metrics.CpuPercent;
@@ -263,9 +269,24 @@ public sealed class UiState : INotifyPropertyChanged
         });
     }
 
+    public void UpdateMetrics(MetricsDto metrics)
+    {
+        Post(() =>
+        {
+            Cpu = metrics.CpuPercent;
+            MemPercent = metrics.MemTotalMb > 0
+                ? Math.Round(metrics.MemUsedMb * 100.0 / metrics.MemTotalMb, 1)
+                : 0;
+            MemText = $"{metrics.MemUsedMb / 1024.0:0.0} / {metrics.MemTotalMb / 1024.0:0.0} GB";
+            UserName = metrics.User;
+            Hostname = metrics.Hostname;
+            UptimeText = FormatUptime(metrics.UptimeSeconds);
+        });
+    }
+
     private static string FormatUptime(long seconds)
     {
-        if (seconds <= 0) return "â€”";
+        if (seconds <= 0) return "—";
         var span = TimeSpan.FromSeconds(seconds);
         return span.TotalDays >= 1 ? $"{(int)span.TotalDays}d {span.Hours}h" : $"{span.Hours}h {span.Minutes}m";
     }

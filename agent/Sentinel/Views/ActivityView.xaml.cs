@@ -91,7 +91,7 @@ public partial class ActivityView : UserControl
         var detail = "";
         if (evt.Detail is { Count: > 0 })
         {
-            detail = string.Join("  Â·  ", evt.Detail
+            detail = string.Join("  ·  ", evt.Detail
                 .Where(kv => kv.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
                 .Select(kv => $"{kv.Key}: {kv.Value}"));
         }

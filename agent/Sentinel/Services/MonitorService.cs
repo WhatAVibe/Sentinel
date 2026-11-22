@@ -343,7 +343,7 @@ public sealed class MonitorService : IDisposable
                 _lastClipboardHash = hash;
             }
             var preview = text.Replace("\r", " ").Replace("\n", " ").Trim();
-            if (preview.Length > 160) preview = preview[..160] + "â€¦";
+            if (preview.Length > 160) preview = preview[..160] + "…";
             Emit(new ActivityEventData
             {
                 Category = "clipboard",
@@ -578,7 +578,7 @@ public sealed class MonitorService : IDisposable
                 {
                     Category = "network",
                     Severity = "info",
-                    Title = $"{ProcessName(pid)} â†’ {host}:{port}",
+                    Title = $"{ProcessName(pid)} → {host}:{port}",
                     Detail = new() { ["process"] = ProcessName(pid), ["host"] = host, ["port"] = port, ["pid"] = pid }
                 });
             }

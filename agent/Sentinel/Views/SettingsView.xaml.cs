@@ -12,6 +12,7 @@ namespace Sentinel.Views;
 public partial class SettingsView : UserControl
 {
     private bool _loading;
+    private DateTime _statusUntil = DateTime.MinValue;
     private readonly DispatcherTimer _statusTimer;
     private readonly ObservableCollection<PhoneDto> _phones = new();
 
@@ -45,7 +46,7 @@ public partial class SettingsView : UserControl
         var cfg = App.Host.Config;
         ServerBox.Text = cfg.ServerUrl;
         DeviceNameBox.Text = cfg.DeviceName;
-        DeviceIdText.Text = $"Device id Â· {cfg.DeviceId}";
+        DeviceIdText.Text = $"Device id · {cfg.DeviceId}";
 
         ScreensaverCheck.IsChecked = cfg.AwayScreensaver;
         LockAfterBox.Text = cfg.LockAfterAwaySeconds.ToString();
@@ -83,7 +84,7 @@ public partial class SettingsView : UserControl
         var link = SecurityKey.Current(cfg);
         SecurityKeyText.Text = link == null
             ? (SecurityKey.Available ? "No key linked" : "This Windows build has no WebAuthn API")
-            : $"Linked Â· {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}â€¦";
+            : $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
         AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version}";
         UpdateMasterStatus();
 
@@ -406,7 +407,7 @@ public partial class SettingsView : UserControl
         }
         Apply(c => c.ServerUrl = url, reconnect: true);
         ServerBox.Text = url;
-        ServerStatus.Text = "Saved. Reconnectingâ€¦";
+        ServerStatus.Text = "Saved. Reconnecting…";
         await Task.Delay(600);
         RefreshLiveStatus();
     }
@@ -419,13 +420,13 @@ public partial class SettingsView : UserControl
             ServerStatus.Text = "Enter a valid http(s) address.";
             return;
         }
-        ServerStatus.Text = "Contacting serverâ€¦";
+        ServerStatus.Text = "Contacting server…";
         try
         {
             var health = await ApiClient.PingAsync(url, InsecureCheck.IsChecked == true, CancellationToken.None);
-            ServerStatus.Text = health == null
+            SetStatus(health == null
                 ? "No response."
-                : $"Connected to {health.Name} Â· relay v{health.Version}";
+                : $"Connected to {health.Name} · relay v{health.Version}", 12);
         }
         catch (Exception ex)
         {
@@ -496,7 +497,7 @@ public partial class SettingsView : UserControl
 
     private async void RefreshAdb_Click(object sender, RoutedEventArgs e)
     {
-        AdbDevicesText.Text = "Refreshingâ€¦";
+        AdbDevicesText.Text = "Refreshing…";
         await App.Host.Adb.RefreshAsync();
         RefreshLiveStatus();
     }
@@ -546,13 +547,13 @@ public partial class SettingsView : UserControl
             RelayVersionText.Text = "Relay: not configured";
             return;
         }
-        RelayVersionText.Text = "Relay: checkingâ€¦";
+        RelayVersionText.Text = "Relay: checking…";
         try
         {
             var health = await ApiClient.PingAsync(cfg.ServerUrl, cfg.AllowInsecureTls, CancellationToken.None);
             RelayVersionText.Text = health == null
                 ? "Relay: no response"
-                : $"Relay {health.Version} Â· {health.PublicUrl}";
+                : $"Relay {health.Version} · {health.PublicUrl}";
         }
         catch (Exception ex)
         {
@@ -568,17 +569,17 @@ public partial class SettingsView : UserControl
                 "Security key", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        SecurityKeyText.Text = "Waiting for the key â€” touch it nowâ€¦";
+        SecurityKeyText.Text = "Waiting for the key — touch it now…";
         var (ok, error) = await SecurityKey.LinkAsync(App.Host);
         var link = SecurityKey.Current(App.Host.Config);
         if (ok && link != null)
         {
-            SecurityKeyText.Text = $"Linked Â· {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}â€¦";
+            SecurityKeyText.Text = $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
             MessageBox.Show("Security key linked. Touch it whenever Sentinel asks to unlock, or use the 2FA code.",
                 "Security key", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        SecurityKeyText.Text = $"Link failed Â· {error}";
+        SecurityKeyText.Text = $"Link failed · {error}";
     }
 
     private void RemoveKey_Click(object sender, RoutedEventArgs e)
@@ -641,8 +642,8 @@ public partial class SettingsView : UserControl
     {
         if (MasterStatusText == null) return;
         MasterStatusText.Text = App.Host.HasMasterPassword
-            ? "Set â€” unlocks secure lock, exit and unpair locally."
-            : "Not set â€” only linked devices can unlock this PC.";
+            ? "Set — unlocks secure lock, exit and unpair locally."
+            : "Not set — only linked devices can unlock this PC.";
         MasterStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
             App.Host.HasMasterPassword ? "Success" : "Muted");
     }
@@ -657,6 +658,12 @@ public partial class SettingsView : UserControl
         await App.Host.RunLocalAsync("alarm");
     }
 
+    private void SetStatus(string text, int stickySeconds = 0)
+    {
+        ServerStatus.Text = text;
+        if (stickySeconds > 0) _statusUntil = DateTime.UtcNow.AddSeconds(stickySeconds);
+    }
+
     private void RefreshLiveStatus()
     {
         var host = App.Host;
@@ -664,18 +671,21 @@ public partial class SettingsView : UserControl
         DirectCodeText.Text = host.EnsureLocalPairCode();
 
         var status = host.Runtime.Status;
-        ServerStatus.Text = cfg.Paired
-            ? status + (string.IsNullOrEmpty(host.Runtime.LastError) ? "" : $" Â· {host.Runtime.LastError}")
-            : "Not paired. Enter the server address and pair from your device.";
+        if (DateTime.UtcNow >= _statusUntil)
+        {
+            ServerStatus.Text = cfg.Paired
+                ? status + (string.IsNullOrEmpty(host.Runtime.LastError) ? "" : $" · {host.Runtime.LastError}")
+                : "Not paired. Enter the server address and pair from your device.";
+        }
 
         var adb = host.Adb;
         var devices = adb.Devices.Count == 0
             ? "no devices attached"
             : string.Join(", ", adb.Devices.Select(d => $"{d.Label} [{d.State}]"));
         DirectStatusText.Text = $"Local API {(host.Local.Running ? "listening" : "stopped")} on http://127.0.0.1:{host.Local.Port}" +
-                                (host.Local.Running ? " Â· adb reverse " + (adb.ReverseReady ? "ready" : "pending") : "");
+                                (host.Local.Running ? " · adb reverse " + (adb.ReverseReady ? "ready" : "pending") : "");
         AdbDevicesText.Text = cfg.AdbEnabled
-            ? $"ADB: {devices} Â· path: {adb.AdbPath ?? "not found"}"
+            ? $"ADB: {devices} · path: {adb.AdbPath ?? "not found"}"
             : "Direct link disabled.";
     }
 
@@ -692,7 +702,7 @@ public partial class SettingsView : UserControl
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        UpdateStatusText.Text = "Checking GitHub releasesâ€¦";
+        UpdateStatusText.Text = "Checking GitHub releases…";
         var info = await Updates.CheckAsync(true);
         if (info.CheckedAt == 0)
         {
@@ -702,7 +712,7 @@ public partial class SettingsView : UserControl
         UpdateStatusText.Text =
             $"Current: agent {AgentInfo.Version}. Latest release {info.Tag}: agent {info.Agent}, " +
             $"phone {info.Phone}, watch {info.Watch}. " +
-            (info.AnyOutdated ? "Update available â€” use Open releases." : "Everything is up to date.");
+            (info.AnyOutdated ? "Update available — use Open releases." : "Everything is up to date.");
     }
 
     private void OpenReleases_Click(object sender, RoutedEventArgs e) => Updates.OpenReleasePage();

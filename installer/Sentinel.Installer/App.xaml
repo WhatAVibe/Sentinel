@@ -48,6 +48,13 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="18,9" />
             <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="{StaticResource Elevated}" />
+                    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                    <Setter Property="Opacity" Value="0.7" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="Ghost" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource Elevated}" />
@@ -55,6 +62,12 @@
             <Setter Property="BorderBrush" Value="{StaticResource Line}" />
             <Setter Property="Padding" Value="14,8" />
             <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                    <Setter Property="Opacity" Value="0.6" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource Ghost}">
             <Setter Property="Foreground" Value="{StaticResource Danger}" />
@@ -66,6 +79,11 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="HorizontalAlignment" Value="Left" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Application.Resources>
 </Application>

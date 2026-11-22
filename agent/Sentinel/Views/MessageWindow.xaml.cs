@@ -25,7 +25,7 @@ public partial class MessageWindow : Window
         _allowReply = allowReply;
         TitleText.Text = string.IsNullOrWhiteSpace(title) ? "Message from your phone" : title;
         BodyText.Text = body;
-        KindText.Text = $"{kind.ToUpperInvariant()} Â· SENT BY SENTINEL";
+        KindText.Text = $"{kind.ToUpperInvariant()} · SENT BY SENTINEL";
 
         switch (kind)
         {

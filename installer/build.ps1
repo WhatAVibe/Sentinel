@@ -13,7 +13,8 @@ $out = Join-Path $PSScriptRoot "out"
 Write-Host "Publishing agent payload..."
 if (Test-Path $agentOut) { Remove-Item $agentOut -Recurse -Force }
 dotnet publish $agentProject -c $Configuration -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $agentOut | Out-Host
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true -o $agentOut | Out-Host
 
 $agentExe = Join-Path $agentOut "Sentinel.exe"
 if (-not (Test-Path $agentExe)) { throw "agent publish did not produce Sentinel.exe" }
@@ -24,8 +25,10 @@ Compress-Archive -Path $agentExe -DestinationPath $payloadZip -CompressionLevel 
 
 Write-Host "Publishing installer..."
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+Remove-Item (Join-Path $installerDir "obj"), (Join-Path $installerDir "bin") -Recurse -Force -ErrorAction SilentlyContinue
 dotnet publish (Join-Path $installerDir "Sentinel.Installer.csproj") -c $Configuration -r win-x64 `
     --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
     -o $out | Out-Host
 
 Get-ChildItem $out | Select-Object Name, Length | Format-Table

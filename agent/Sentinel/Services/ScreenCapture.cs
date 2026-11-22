@@ -21,7 +21,7 @@ public static class ScreenCapture
             {
                 var primary = (info.dwFlags & 1) != 0;
                 var index = list.Count + 1;
-                var name = $"{(primary ? "Primary" : "Display " + index)} Â· {info.rcMonitor.Width}Ã—{info.rcMonitor.Height}";
+                var name = $"{(primary ? "Primary" : "Display " + index)} · {info.rcMonitor.Width}×{info.rcMonitor.Height}";
                 list.Add(new MonitorSlot(hMonitor, name, info.rcMonitor, primary));
             }
             return true;

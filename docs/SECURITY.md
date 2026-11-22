@@ -53,10 +53,12 @@ the 2FA code and does not protect the relay.
   Writing the code to the PC clipboard is an explicit action from an external device, not a desktop feature.
 - Optional ADB presence requirement adds a "something you have nearby" factor for disarming.
 - **Physical security key (FIDO2).** Settings → Physical security key links a YubiKey, a Flipper Zero with
-  the FIDO app, or any CTAP2 authenticator through the Windows WebAuthn API. Once linked, local unlock
-  prompts (secure lock, exit, unpair, phone removal) accept a key touch instead of the code. The assertion
-  is matched against the stored credential id by the platform; the credential id is DPAPI-protected in
-  `config.json`. Unlinking is done from Settings and needs an unlocked desktop.
+  the FIDO app, or any CTAP2 authenticator. The link uses a short-lived local browser page - the same
+  WebAuthn path Discord and Edge use, because Windows 11 25H2 removed the old Win32 WebAuthn exports - and
+  the browser shows the native Windows security-key prompt. Once linked, local unlock prompts (secure lock,
+  exit, unpair, phone removal) accept a key touch instead of the code. The credential id is matched by the
+  platform and stored DPAPI-protected in `config.json`. Unlinking is done from Settings and needs an
+  unlocked desktop.
 
 ## Screenshots, clipboard, privacy
 

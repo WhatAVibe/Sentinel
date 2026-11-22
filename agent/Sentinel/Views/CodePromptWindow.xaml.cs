@@ -20,7 +20,7 @@ public partial class CodePromptWindow : Window
         _timer.Tick += (_, _) =>
         {
             var remaining = Totp.SecondsRemaining();
-            HintText.Text = $"Current code window refreshes in {remaining}s Â· trusted phone " +
+            HintText.Text = $"Current code window refreshes in {remaining}s · trusted phone " +
                             (_host.Adb.TrustedPresent ? "connected" : "not connected");
         };
         Loaded += (_, _) => _timer.Start();
@@ -84,7 +84,7 @@ public partial class CodePromptWindow : Window
     private async void Key_Click(object sender, RoutedEventArgs e)
     {
         KeyButton.IsEnabled = false;
-        ErrorText.Text = "Touch your security keyâ€¦";
+        ErrorText.Text = "Touch your security key…";
         ErrorText.Foreground = (System.Windows.Media.Brush)FindResource("Muted");
         ErrorText.Visibility = Visibility.Visible;
         var (ok, error) = await SecurityKey.VerifyAsync(_host);

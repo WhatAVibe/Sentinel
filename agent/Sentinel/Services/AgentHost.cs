@@ -65,13 +65,13 @@ public sealed class AgentHost : IDisposable
         Adb = new AdbService(this);
         Local = new LocalApiServer(this);
 
-        Runtime.StatusChanged += status => UiState.I.Connection = status;
+        Runtime.StatusChanged += status => UiState.I.Connection = Config.Paired ? status : "Not paired";
         Api.Trace += line => Log.Write(line.StartsWith("FAILED", StringComparison.OrdinalIgnoreCase) ? "error" : "http", line);
         Api.Unauthorized += () =>
         {
             if (Runtime.Status != "Re-pair") UiState.I.Connection = "Re-pair";
         };
-        UiState.I.Connection = "Offline";
+        UiState.I.Connection = Config.Paired ? "Offline" : "Not paired";
         UiState.I.ServerUrl = Config.ServerUrl;
         UiState.I.ServerLabel = string.IsNullOrWhiteSpace(Config.ServerUrl) ? "Not paired" : Config.ServerUrl;
         UiState.I.Paired = Config.Paired;
@@ -117,14 +117,14 @@ public sealed class AgentHost : IDisposable
         UiState.Post(() =>
         {
             UiState.I.UpdateText = info.AnyOutdated
-                ? $"outdated Â· update to {info.Tag}"
+                ? $"outdated · update to {info.Tag}"
                 : "";
             UiState.I.UpdateVisibility = info.AnyOutdated ? Visibility.Visible : Visibility.Collapsed;
         });
         if (info.AnyOutdated && info.Tag != _notifiedUpdateTag)
         {
             _notifiedUpdateTag = info.Tag;
-            Notify("Sentinel update available", $"A newer build is available ({info.Tag}). Open Settings â†’ Updates.");
+            Notify("Sentinel update available", $"A newer build is available ({info.Tag}). Open Settings → Updates.");
         }
     }
 
@@ -228,7 +228,8 @@ public sealed class AgentHost : IDisposable
         SaveConfig();
         Runtime.Stop();
         UiState.I.Paired = false;
-        UiState.I.Connection = "Offline";
+        UiState.I.LinkedDevices = 0;
+        UiState.I.Connection = "Not paired";
         PairingChanged?.Invoke();
     }
 
@@ -682,7 +683,7 @@ public sealed class AgentHost : IDisposable
             return "PC";
         var parts = source.Split(':', 3);
         if (parts.Length == 3 && (parts[0] == "phone" || parts[0] == "watch"))
-            return $"{(parts[0] == "watch" ? "Watch" : "Phone")} Â· {parts[1]}";
+            return $"{(parts[0] == "watch" ? "Watch" : "Phone")} · {parts[1]}";
         if (string.Equals(source, "remote", StringComparison.OrdinalIgnoreCase)) return "Remote";
         return source;
     }
@@ -693,7 +694,11 @@ public sealed class AgentHost : IDisposable
     private static bool RequiresLinkedDevice(string type) => type is
         "away_enable" or "lock_screen" or "shutdown" or "restart" or "sleep" or "hibernate" or "logoff";
 
-    public void SetLinkedDevices(int count) => LinkedDevices = count;
+    public void SetLinkedDevices(int count)
+    {
+        LinkedDevices = count;
+        UiState.Post(() => UiState.I.LinkedDevices = count);
+    }
 
     private static bool SetClipboard(string text)
     {
@@ -1013,7 +1018,7 @@ public sealed class AgentHost : IDisposable
             {
                 Category = "screenshot",
                 Severity = "info",
-                Title = $"Screenshot captured Â· {captures.Count} display(s)",
+                Title = $"Screenshot captured · {captures.Count} display(s)",
                 Detail = new() { ["trigger"] = trigger, ["uploaded"] = uploaded.Count }
             });
 

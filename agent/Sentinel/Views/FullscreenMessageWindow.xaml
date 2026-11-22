@@ -19,7 +19,7 @@
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock x:Name="TitleText" FontSize="17" FontWeight="SemiBold"
                                    TextWrapping="Wrap" Text="Message from your phone" />
-                        <TextBlock Text="SENTINEL Â· FULLSCREEN" FontSize="9" Foreground="{StaticResource Muted}" />
+                        <TextBlock Text="SENTINEL · FULLSCREEN" FontSize="9" Foreground="{StaticResource Muted}" />
                     </StackPanel>
                 </StackPanel>
                 <TextBlock x:Name="BodyText" FontSize="15" TextWrapping="Wrap" LineHeight="22"

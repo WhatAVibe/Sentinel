@@ -201,13 +201,22 @@ run();
 """.Replace("__PROMPT__", isRegister
                 ? "Touch your security key to link it to this PC."
                 : "Touch your linked security key to unlock.")
-            .Replace("__CHALLENGE__", challenge)
+            .Replace("__CHALLENGE__", Base64UrlToAtob(challenge))
             .Replace("__USERID__", Base64UrlToAtob(userId))
             .Replace("__CREDID__", Base64UrlToAtob(credentialId))
             .Replace("__MODE_REGISTER__", isRegister ? "true" : "false");
     }
 
-    private static string Base64UrlToAtob(string value) => value.Replace('-', '+').Replace('_', '/');
+    private static string Base64UrlToAtob(string value)
+    {
+        var text = value.Replace('-', '+').Replace('_', '/');
+        switch (text.Length % 4)
+        {
+            case 2: text += "=="; break;
+            case 3: text += "="; break;
+        }
+        return text;
+    }
 
     private static async Task<(string Path, string Body)?> ReadRequestAsync(NetworkStream stream, CancellationToken ct)
     {
