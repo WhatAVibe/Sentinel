@@ -6,9 +6,9 @@ Every component is published on **[Releases](https://github.com/WhatAVibe/Sentin
 
 | Component | Asset |
 |---|---|
-| Windows agent + installer | `Sentinel-Setup-2.1.2.exe` |
-| Windows agent only | `Sentinel-Agent-1.6.2-win-x64.exe` |
-| Phone (Android 8+) | `Sentinel-Phone-1.6.0.apk` |
+| Windows agent + installer | `Sentinel-Setup-2.1.3.exe` |
+| Windows agent only | `Sentinel-Agent-1.6.3-win-x64.exe` |
+| Phone (Android 8+) | `Sentinel-Phone-1.6.1.apk` |
 | Wear OS 3+ | `Sentinel-Watch-1.3.5.apk` |
 | Relay | `Sentinel-Relay-1.3.4.zip` |
 | Checksums | `SHA256SUMS.txt` |

@@ -16,6 +16,7 @@ public partial class App : Application
     private Mutex? _mutex;
     private EventWaitHandle? _showSignal;
     private MainWindow? _main;
+    private CodePromptWindow? _disarmDialog;
     private DispatcherTimer? _deviceWatcher;
     private readonly HashSet<string> _promptedDevices = new();
     private bool _confirmOpen;
@@ -114,6 +115,7 @@ public partial class App : Application
         Host.ToastRequested += text => UiState.Post(() => new ToastWindow("Message from your phone", text).Show());
         Tray = new TrayService(Host, ShowDashboard, ShowSettings, RequestDisarm, RequestExit);
         Host.Start();
+        Host.AwayChanged += () => UiState.Post(OnAwayChanged);
         StartWatchdog();
         Host.RestoreSecureLockIfNeeded();
 
@@ -173,11 +175,41 @@ public partial class App : Application
         }
     }
 
+    public void RefreshTray()
+    {
+        try { Tray?.Update(); } catch { }
+    }
+
+    public void HideDashboard()
+    {
+        try { _main?.Hide(); } catch { }
+    }
+
+    private void OnAwayChanged()
+    {
+        if (Host.Away)
+        {
+            HideDashboard();
+        }
+        else if (_disarmDialog != null)
+        {
+            try { _disarmDialog.Close(); } catch { }
+            _disarmDialog = null;
+        }
+        RefreshTray();
+    }
+
     public void ShowDashboard()
     {
+        if (SecureLock.Active) return;
+        if (Host.Away)
+        {
+            RequestDisarm();
+            return;
+        }
         UiState.Post(() =>
         {
-            if (_shuttingDown) return;
+            if (_shuttingDown || SecureLock.Active || Host.Away) return;
             if (_main == null)
             {
                 _main = new MainWindow();
@@ -195,15 +227,22 @@ public partial class App : Application
 
     public void ShowSettings()
     {
+        if (SecureLock.Active) return;
+        if (Host.Away)
+        {
+            RequestDisarm();
+            return;
+        }
         ShowDashboard();
         UiState.Post(() => _main?.NavigateTo("settings"));
     }
 
     public void ShowPairing()
     {
+        if (SecureLock.Active || Host.Away) return;
         UiState.Post(() =>
         {
-            if (_shuttingDown) return;
+            if (_shuttingDown || SecureLock.Active || Host.Away) return;
             var window = new PairWindow { Owner = _main };
             var result = window.ShowDialog();
             if (result == true)
@@ -225,17 +264,20 @@ public partial class App : Application
         {
             timer.Stop();
             if (_main == null || Host.Config.TutorialDone || !Host.Config.Paired) return;
+            if (SecureLock.Active || Host.Away) return;
             new TutorialWindow { Owner = _main }.ShowDialog();
         };
         timer.Start();
     }
 
     public void RequestDisarm()    {
+        if (SecureLock.Active) return;
         UiState.Post(() => _ = DisarmFlowAsync());
     }
 
     private async Task DisarmFlowAsync()
     {
+        if (SecureLock.Active) return;
         if (!Host.Away)
         {
             ShowDashboard();
@@ -252,9 +294,18 @@ public partial class App : Application
             "Unlock / disable away mode",
             "Enter the 6-digit code from Sentinel on your phone, or type it from your hardware token.",
             Host) { Owner = _main };
-        if (dialog.ShowDialog() != true) return;
+        _disarmDialog = dialog;
+        var accepted = dialog.ShowDialog() == true;
+        _disarmDialog = null;
+        if (!accepted) return;
 
-        var outcome = await Host.DisableAwayAsync("desktop", dialog.Code);
+        var method = dialog.Method switch
+        {
+            "recovery password" => "desktop-password",
+            "security key" => "desktop-key",
+            _ => "desktop-code"
+        };
+        var outcome = await Host.DisableAwayAsync(method, dialog.Code);
         if (!outcome.Ok)
         {
             var message = outcome.Error switch
@@ -264,14 +315,18 @@ public partial class App : Application
                 _ => outcome.Error ?? "Could not disable away mode."
             };
             MessageBox.Show(message, "Sentinel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+        Tray.Update();
+        ShowDashboard();
     }
 
     public void RequestExit()
     {
+        if (SecureLock.Active) return;
         UiState.Post(() =>
         {
-            if (_shuttingDown) return;
+            if (_shuttingDown || SecureLock.Active) return;
 
             if (!Host.Config.Paired)
             {

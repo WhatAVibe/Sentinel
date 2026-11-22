@@ -3,6 +3,39 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [2.1.3] — 2026-11-22
+
+Installer 2.1.3 · Agent 1.6.3 · Relay 1.3.4 · Phone 1.6.1 (17) · Watch 1.3.5 (10) · Flipper 1.1.0
+
+### Added
+
+- **Android home-screen widgets**: a status widget (PC name, Online/Away/Secure lock/Offline, live code,
+  countdown), a code-only widget, and a quick-actions widget (Lock, Secure lock, Away, Screenshot). The code
+  widget refreshes every 30 seconds; tapping any widget opens Sentinel. Widgets are added from
+  **Settings → Widgets & Quick Settings** or from the launcher.
+- **Quick Settings tile**: “Lock <PC>” performs a secure lock (or opens the app when actions are locked).
+- **Widget options**: “Allow actions without unlocking” (off by default — buttons open the app and its
+  PIN/biometrics) and “Show the 2FA code in widgets”. The widget token and TOTP secret are stored in
+  Android SharedPreferences encrypted with an Android Keystore AES-GCM key and cleared on unpair.
+- **Clear actor reporting**: unlocking or disarming records who did it — `Phone · <name>` / `Watch · <name>`
+  for remote commands, `PC · 2FA code`, `PC · recovery password`, `PC · security key` or `PC · direct API`
+  for the desktop/local API.
+
+### Security
+
+- **The desktop UI is locked down while away mode or secure lock is active.** Enabling away mode hides the
+  dashboard; attempting to open Sentinel now shows only the **Unlock / disable away mode** dialog. Secure
+  lock blocks the dashboard, settings, pairing and tray Exit, and the tray's Open/Settings/Start-with-Windows
+  and Away items are disabled. The disarm dialog closes itself when away mode ends (for example from the
+  phone), so it can no longer linger after a remote disarm. Verified with a scripted run against the live
+  agent: dashboard hidden on away, only the code prompt on open, dialog gone after remote disarm, only the
+  overlay while secure-locked.
+
+### Changed
+
+- Phone 1.6.1 and agent 1.6.3; installer 2.1.3. Relay and watch builds are unchanged from 2.1.2 and still
+  included in the release.
+
 ## [2.1.2] — 2026-11-22
 
 Installer 2.1.2 · Agent 1.6.2 · Relay 1.3.4 · Phone 1.6.0 (16) · Watch 1.3.5 (10) · Flipper 1.1.0

@@ -425,7 +425,7 @@ public sealed class AgentHost : IDisposable
             Category = "security",
             Severity = "warning",
             Title = "Away mode disabled",
-            Detail = new() { ["reason"] = reason }
+            Detail = new() { ["reason"] = reason, ["by"] = DescribeActor(reason) }
         });
         AwayChanged?.Invoke();
         await PostStateSafe();
@@ -688,6 +688,14 @@ public sealed class AgentHost : IDisposable
     {
         if (string.IsNullOrWhiteSpace(source) || string.Equals(source, "desktop", StringComparison.OrdinalIgnoreCase))
             return "PC";
+        if (string.Equals(source, "desktop-code", StringComparison.OrdinalIgnoreCase))
+            return "PC · 2FA code";
+        if (string.Equals(source, "desktop-password", StringComparison.OrdinalIgnoreCase))
+            return "PC · recovery password";
+        if (string.Equals(source, "desktop-key", StringComparison.OrdinalIgnoreCase))
+            return "PC · security key";
+        if (string.Equals(source, "direct", StringComparison.OrdinalIgnoreCase))
+            return "PC · direct API";
         var parts = source.Split(':', 3);
         if (parts.Length == 3 && (parts[0] == "phone" || parts[0] == "watch"))
             return $"{(parts[0] == "watch" ? "Watch" : "Phone")} · {parts[1]}";
@@ -909,6 +917,7 @@ public sealed class AgentHost : IDisposable
             return;
         }
         SecureLock.Activate(message);
+        (Application.Current as App)?.RefreshTray();
         OnActivity(new ActivityEventData
         {
             Category = "security",
@@ -917,6 +926,7 @@ public sealed class AgentHost : IDisposable
             Detail = new() { ["message"] = message }
         });
         ShowSecureLockWindow(message);
+        (Application.Current as App)?.HideDashboard();
         _ = PostStateSafe();
     }
 
@@ -924,6 +934,7 @@ public sealed class AgentHost : IDisposable
     {
         if (!SecureLock.Active) return;
         SecureLock.Deactivate();
+        (Application.Current as App)?.RefreshTray();
         var app = Application.Current;
         app?.Dispatcher.BeginInvoke(() =>
         {
@@ -942,7 +953,7 @@ public sealed class AgentHost : IDisposable
             Category = "security",
             Severity = "warning",
             Title = "Secure lock released",
-            Detail = new() { ["reason"] = reason }
+            Detail = new() { ["reason"] = reason, ["by"] = DescribeActor(reason) }
         });
         _ = PostStateSafe();
     }

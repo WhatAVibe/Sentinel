@@ -9,6 +9,7 @@ import 'diagnostics.dart';
 import 'notifier.dart';
 import 'store.dart';
 import 'totp.dart';
+import 'widgets_bridge.dart';
 
 class AppState extends ChangeNotifier {
   final SessionStore store = SessionStore();
@@ -34,6 +35,8 @@ class AppState extends ChangeNotifier {
   bool biometricEnabled = true;
   bool canUseBiometrics = false;
   bool hasPin = false;
+  bool widgetAllowWithoutUnlock = false;
+  bool widgetShowCode = true;
   String? lastError;
   String relayVersion = '';
   final Map<String, bool> notifications = {
@@ -71,6 +74,8 @@ class AppState extends ChangeNotifier {
     biometricEnabled = await store.biometricEnabled();
     hasPin = await store.hasPin();
     canUseBiometrics = await Biometrics.available();
+    widgetAllowWithoutUnlock = await store.widgetAllowWithoutUnlock();
+    widgetShowCode = await store.widgetShowCode();
     for (final key in notifications.keys) {
       notifications[key] = await store.notificationEnabled(key);
     }
@@ -117,6 +122,38 @@ class AppState extends ChangeNotifier {
     _subscription = created.stream.listen(_onPush);
     unawaited(_initialLoad());
     _poll = Timer.periodic(const Duration(seconds: 15), (_) => refreshDevice());
+    unawaited(syncWidgets());
+    notifyListeners();
+  }
+
+  Future<void> syncWidgets() async {
+    final current = session;
+    if (current == null || current.isDirect || current.token.isEmpty) {
+      await SentinelWidgets.clear();
+      return;
+    }
+    await SentinelWidgets.configure(
+      baseUrl: current.baseUrl,
+      token: current.token,
+      deviceId: current.deviceId,
+      name: current.displayName.isEmpty ? current.deviceName : current.displayName,
+      totp: current.totpSecret,
+      allowWithoutUnlock: widgetAllowWithoutUnlock,
+      showCode: widgetShowCode,
+    );
+  }
+
+  Future<void> setWidgetAllowWithoutUnlock(bool value) async {
+    widgetAllowWithoutUnlock = value;
+    await store.setWidgetAllowWithoutUnlock(value);
+    await syncWidgets();
+    notifyListeners();
+  }
+
+  Future<void> setWidgetShowCode(bool value) async {
+    widgetShowCode = value;
+    await store.setWidgetShowCode(value);
+    await syncWidgets();
     notifyListeners();
   }
 
@@ -286,6 +323,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> handleServerUnpair() async {
     await store.clearSessions();
+    await SentinelWidgets.clear();
     _confirmPoll?.cancel();
     _confirmPoll = null;
     pendingConfirmation = false;
@@ -479,6 +517,7 @@ class AppState extends ChangeNotifier {
     if (sessions.isEmpty) {
       await store.saveActiveId(null);
       session = null;
+      await SentinelWidgets.clear();
     } else {
       session = sessions.first;
       await store.saveActiveId(session!.deviceId);

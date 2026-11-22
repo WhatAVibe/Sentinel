@@ -10,6 +10,9 @@ public sealed class TrayService : IDisposable
     private readonly AgentHost _host;
     private readonly NotifyIcon _icon;
     private readonly ToolStripMenuItem _statusItem;
+    private readonly ToolStripMenuItem _openItem;
+    private readonly ToolStripMenuItem _settingsItem;
+    private readonly ToolStripMenuItem _exitItem;
     private readonly ToolStripMenuItem _awayItem;
     private readonly ToolStripMenuItem _disarmItem;
     private readonly ToolStripMenuItem _startupItem;
@@ -29,6 +32,12 @@ public sealed class TrayService : IDisposable
         _generatedIcon = BuildIcon();
 
         _statusItem = new ToolStripMenuItem("Starting…") { Enabled = false };
+        _openItem = new ToolStripMenuItem("Open Sentinel", null, (_, _) => _show())
+        {
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        };
+        _settingsItem = new ToolStripMenuItem("Settings", null, (_, _) => _settings());
+        _exitItem = new ToolStripMenuItem("Exit", null, (_, _) => _exit());
         _awayItem = new ToolStripMenuItem("Away mode", null, (_, _) => _ = ToggleAwayAsync())
         {
             CheckOnClick = false
@@ -50,7 +59,7 @@ public sealed class TrayService : IDisposable
             ForeColor = Color.FromArgb(230, 233, 239),
             Font = new Font("Segoe UI", 9f)
         };
-        menu.Items.Add(new ToolStripMenuItem("Open Sentinel", null, (_, _) => _show()) { Font = new Font("Segoe UI", 9f, FontStyle.Bold) });
+        menu.Items.Add(_openItem);
         menu.Items.Add(_statusItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Lock PC", null, (_, _) => PowerActions.Lock()));
@@ -59,10 +68,10 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(_awayItem);
         menu.Items.Add(_disarmItem);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Settings", null, (_, _) => _settings()));
+        menu.Items.Add(_settingsItem);
         menu.Items.Add(_startupItem);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => _exit()));
+        menu.Items.Add(_exitItem);
         foreach (ToolStripItem item in menu.Items) item.ForeColor = Color.FromArgb(230, 233, 239);
 
         _icon = new NotifyIcon
@@ -88,12 +97,22 @@ public sealed class TrayService : IDisposable
     {
         var status = _host.Runtime.Status;
         var paired = _host.Config.Paired;
-        _statusItem.Text = paired ? $"{status} · {_host.Config.DeviceName}" : "Not paired";
-        _awayItem.Checked = _host.Away;
-        _awayItem.Text = _host.Away ? "Away mode (active)" : "Away mode";
-        _disarmItem.Visible = _host.Away;
+        var locked = SecureLock.Active;
+        var away = _host.Away;
+        _statusItem.Text = locked
+            ? "Locked · secure lock active"
+            : paired ? $"{status} · {_host.Config.DeviceName}" : "Not paired";
+        _openItem.Enabled = !locked;
+        _settingsItem.Enabled = !locked && !away;
+        _startupItem.Enabled = !locked && !away;
+        _exitItem.Enabled = !locked;
+        _awayItem.Enabled = !locked;
+        _awayItem.Checked = away;
+        _awayItem.Text = away ? "Away mode (active)" : "Away mode";
+        _disarmItem.Visible = away;
+        _disarmItem.Enabled = !locked;
         _startupItem.Checked = StartupManager.IsEnabled();
-        var text = paired ? $"Sentinel · {status}" : "Sentinel · not paired";
+        var text = locked ? "Sentinel · locked" : paired ? $"Sentinel · {status}" : "Sentinel · not paired";
         _icon.Text = text.Length > 62 ? text[..62] : text;
     }
 
@@ -115,6 +134,7 @@ public sealed class TrayService : IDisposable
 
     private async Task ToggleAwayAsync()
     {
+        if (SecureLock.Active) return;
         if (!_host.Away)
             await _host.EnableAwayAsync("tray");
         else
@@ -123,6 +143,7 @@ public sealed class TrayService : IDisposable
 
     private void ToggleStartup()
     {
+        if (SecureLock.Active || _host.Away) return;
         var enable = !StartupManager.IsEnabled();
         StartupManager.Set(enable);
         _host.Config.StartWithWindows = enable;

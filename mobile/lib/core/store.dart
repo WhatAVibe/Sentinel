@@ -129,6 +129,26 @@ class SessionStore {
     await prefs.setBool('sentinel_tutorial_done', value);
   }
 
+  Future<bool> widgetAllowWithoutUnlock() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('widget_allow_without_unlock') ?? false;
+  }
+
+  Future<void> setWidgetAllowWithoutUnlock(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('widget_allow_without_unlock', value);
+  }
+
+  Future<bool> widgetShowCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('widget_show_code') ?? true;
+  }
+
+  Future<void> setWidgetShowCode(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('widget_show_code', value);
+  }
+
   Future<bool> notificationEnabled(String category) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('notify_$category') ?? true;

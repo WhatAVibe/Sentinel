@@ -27,6 +27,7 @@ anyone using the PC.
 | TOTP secret | PC `config.json` | DPAPI |
 | Phone token | phone | `flutter_secure_storage` (KeyStore / DPAPI) |
 | Phone TOTP secret | phone | `flutter_secure_storage` |
+| Widget token + TOTP | phone | SharedPreferences encrypted with an Android Keystore AES-GCM key; written only when widgets are configured, cleared on unpair |
 | Tokens (server) | SQLite | SHA-256 hashes only |
 | Pairing code | server + PC | 6 chars, 10 min TTL, single use |
 | Recovery password | PC `config.json` | DPAPI + PBKDF2-SHA256, 600,000 iterations |
@@ -146,6 +147,21 @@ monitor. While it is active:
 
 Unlock with the code on the overlay or via `unlock_screen` from the phone. Treat this as strong deterrence,
 not a substitute for a Windows account password.
+
+## Away mode and the desktop UI
+
+Away mode is not just a screensaver: while it is active the local UI is not a management surface.
+
+- Enabling away mode (tray, phone, watch, idle, phone-disconnect or a schedule) hides the dashboard.
+- Opening Sentinel while away shows only the **Unlock / disable away mode** prompt. The dashboard, Settings,
+  pairing and the tray's Open/Settings/Start-with-Windows/Away items stay disabled until the 2FA code (or
+  recovery password/security key) is accepted. Tray Exit is also blocked while secure lock is active.
+- When away mode ends — including a remote disarm from the phone — the prompt closes on its own. A stale
+  "unlock" dialog can no longer sit on top of a PC that is already disarmed.
+- Activities record the actor: `Phone · Samsung SM-S948U1` / `Watch · …` for remote actions, or
+  `PC · 2FA code`, `PC · recovery password`, `PC · security key`, `PC · direct API` for local ones.
+- This is UI gating, not a kernel boundary: a local administrator can still kill the agent (the watchdog
+  restarts it) or replace the binary.
 
 ## Linked phones
 

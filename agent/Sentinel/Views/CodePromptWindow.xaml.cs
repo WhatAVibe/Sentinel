@@ -33,6 +33,8 @@ public partial class CodePromptWindow : Window
 
     public string Code => CodeBox.Text.Trim().Replace(" ", "");
 
+    public string Method { get; private set; } = "code";
+
     private void Verify_Click(object sender, RoutedEventArgs e)
     {
         var code = Code;
@@ -56,6 +58,7 @@ public partial class CodePromptWindow : Window
             ShowError("Phone presence is required. Connect your phone over ADB first.");
             return;
         }
+        Method = "code";
         DialogResult = true;
         Close();
     }
@@ -83,6 +86,7 @@ public partial class CodePromptWindow : Window
             ShowError("Phone presence is required. Connect your phone over ADB first.");
             return;
         }
+        Method = "recovery password";
         DialogResult = true;
         Close();
     }
@@ -109,6 +113,7 @@ public partial class CodePromptWindow : Window
             return;
         }
         ErrorText.Visibility = Visibility.Collapsed;
+        Method = "security key";
         DialogResult = true;
         Close();
     }

@@ -13,11 +13,22 @@ import '../core/flipper_bridge.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../core/widgets_bridge.dart';
 import 'flipper_page.dart';
 import 'tutorial.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
+
+  Future<void> _pinWidget(BuildContext context, String kind) async {
+    final ok = await SentinelWidgets.pin(kind);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? 'Widget requested. Confirm it on your home screen.'
+          : 'Add it from your launcher: long-press the home screen → Widgets → Sentinel.'),
+    ));
+  }
 
   Future<void> _export(BuildContext context, String what, String format) async {
     final state = context.read<AppState>();
@@ -370,6 +381,62 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          const SectionHeader('Widgets & Quick Settings'),
+          CardBox(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: state.widgetAllowWithoutUnlock,
+                  onChanged: state.setWidgetAllowWithoutUnlock,
+                  title: const Text('Allow actions without unlocking',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: const Text(
+                      'Lock, secure lock, away and screenshots straight from a widget or tile. '
+                      'Off: those buttons open the app and its PIN/biometrics.',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                ),
+                const Divider(color: C.border, height: 1),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: state.widgetShowCode,
+                  onChanged: state.setWidgetShowCode,
+                  title: const Text('Show the 2FA code in widgets',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('The code is encrypted at rest with Android Keystore',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Add status widget', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Name, state, code and countdown',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.add_rounded, size: 18, color: C.accent),
+                  onTap: () => _pinWidget(context, 'status'),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Add quick actions widget', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Lock, secure lock, away and screenshot buttons',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.add_rounded, size: 18, color: C.accent),
+                  onTap: () => _pinWidget(context, 'actions'),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Add code-only widget', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('A compact live TOTP code',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.add_rounded, size: 18, color: C.accent),
+                  onTap: () => _pinWidget(context, 'code'),
+                ),
+              ],
+            ),
+          ),
           const SectionHeader('Export'),
           CardBox(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -409,7 +476,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.6.0'),
+                const _Line('App', 'Sentinel 1.6.1'),
                 _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'

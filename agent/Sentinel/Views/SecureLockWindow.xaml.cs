@@ -161,7 +161,7 @@ public partial class SecureLockWindow : Window
             return;
         }
         ErrorText.Visibility = Visibility.Collapsed;
-        App.Host.ExitSecureLock("desktop code");
+        App.Host.ExitSecureLock("desktop-code");
     }
 
     private void ShowError(string message)
@@ -188,7 +188,7 @@ public partial class SecureLockWindow : Window
             return;
         }
         ErrorText.Visibility = Visibility.Collapsed;
-        App.Host.ExitSecureLock("recovery password");
+        App.Host.ExitSecureLock("desktop-password");
     }
 
     private async void Key_Click(object sender, RoutedEventArgs e)
@@ -212,7 +212,7 @@ public partial class SecureLockWindow : Window
                 ShowError("Phone presence is required. Connect your phone over ADB first.");
                 return;
             }
-            App.Host.ExitSecureLock("security key");
+            App.Host.ExitSecureLock("desktop-key");
         }
         finally
         {

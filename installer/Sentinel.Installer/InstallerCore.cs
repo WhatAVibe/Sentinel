@@ -26,7 +26,7 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "2.1.2";
+    public const string ProductVersion = "2.1.3";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
     public const string ReleasesUrl = Repository + "/releases/latest";
     public const string RelayGuideUrl = Repository + "/blob/main/docs/SETUP.md";
