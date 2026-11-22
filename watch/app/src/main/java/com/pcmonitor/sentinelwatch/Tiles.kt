@@ -185,7 +185,7 @@ private fun tile(
         .build()
 }
 
-private fun formatCode(code: String): String =
+internal fun formatCode(code: String): String =
     if (code.length == 6) "${code.substring(0, 3)} ${code.substring(3)}" else code
 
 private fun statusText(snapshot: TileSnapshot): Pair<String, Int> = when {

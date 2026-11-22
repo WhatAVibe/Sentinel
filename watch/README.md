@@ -1,7 +1,18 @@
 # Sentinel Watch (Wear OS)
 
-Standalone Wear OS app: status, Lock, Secure lock, Away/Disarm, Unlock screen, Screenshot, Ring,
-a live 2FA code, and **four tiles** including a configurable all-in-one dashboard.
+Standalone Wear OS app: status, Live 2FA code on the home screen, Lock, Secure lock, Away/Disarm, Unlock
+screen, Screenshot, Ring, **four tiles** including a configurable all-in-one dashboard, and a
+**Sentinel code complication** for the watch face.
+
+## Complication
+
+Long-press the watch face -> customize -> pick a complication slot -> **Sentinel**.
+
+- The complication shows **Sentinel** and opens the app on the live code screen when tapped.
+- It deliberately shows no number: Wear OS throttles providers to `UPDATE_PERIOD_SECONDS` (minimum 300 s),
+  so a face-mounted TOTP would be stale most of the time. Fresh codes live on the home-screen strip, the
+  code tile and the Code screen.
+- Supported types: `RANGED_VALUE`, `SHORT_TEXT`, `LONG_TEXT`, so it fits text, icon and arc slots.
 
 ## Tiles
 

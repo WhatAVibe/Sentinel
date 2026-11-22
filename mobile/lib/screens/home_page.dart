@@ -330,7 +330,9 @@ class _Hero extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: state.relayOnline ? C.muted : C.warning),
             ),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          const LiveCodeStrip(),
+          const SizedBox(height: 16),
           _Bar(label: 'CPU', value: device.metrics.cpuPercent / 100, right: '${device.metrics.cpuPercent.toStringAsFixed(0)}%'),
           const SizedBox(height: 10),
           _Bar(

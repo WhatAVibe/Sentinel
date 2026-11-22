@@ -36,7 +36,7 @@ class Api(private val baseUrl: String, private val token: String? = null, privat
         connection.connectTimeout = timeoutMs
         connection.readTimeout = timeoutMs + 4000
         connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("User-Agent", "SentinelWatch/1.2.1")
+        connection.setRequestProperty("User-Agent", "SentinelWatch/1.3.1")
         connection.setRequestProperty("X-Device-Name", DEVICE_NAME)
         if (!token.isNullOrEmpty()) {
             connection.setRequestProperty("Authorization", "Bearer $token")

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
@@ -220,6 +221,100 @@ class ConnectionPill extends StatelessWidget {
         ? (online ? 'DIRECT' : 'NO LINK')
         : (online ? 'RELAY' : 'NO RELAY');
     return Pill(label, color: color, icon: online ? Icons.dns_rounded : Icons.cloud_off_rounded);
+  }
+}
+
+class LiveCodeStrip extends StatefulWidget {
+  const LiveCodeStrip({super.key});
+
+  @override
+  State<LiveCodeStrip> createState() => _LiveCodeStripState();
+}
+
+class _LiveCodeStripState extends State<LiveCodeStrip> {
+  late final Timer _timer;
+  int _seconds = totpSecondsRemaining();
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final seconds = totpSecondsRemaining();
+      if (seconds == _seconds || !mounted) return;
+      setState(() => _seconds = seconds);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  Future<void> _copy(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final code = context.watch<AppState>().liveCode;
+    final ready = code.isNotEmpty;
+
+    return InkWell(
+      onTap: ready ? () => _copy(code) : null,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        decoration: BoxDecoration(
+          color: C.elevated,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: C.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.shield_rounded, size: 14, color: C.accent),
+                const SizedBox(width: 7),
+                const Text('2FA CODE', style: TextStyle(fontSize: 9.5, color: C.muted, letterSpacing: 1)),
+                const Spacer(),
+                Text(
+                  ready ? formatCode(code) : '------',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.5,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 26,
+                  child: Text(
+                    '$_seconds',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontSize: 11, color: C.muted),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: _seconds / 30,
+                minHeight: 4,
+                backgroundColor: C.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(C.accent),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

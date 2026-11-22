@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -50,6 +51,7 @@ import org.json.JSONObject
 
 object TileActions {
     val pending = MutableStateFlow<String?>(null)
+    val screen = MutableStateFlow<String?>(null)
 }
 
 private val SentinelColors = darkColorScheme(
@@ -65,9 +67,14 @@ private val SentinelColors = darkColorScheme(
 private val Muted = Color(0xFF8B93A1)
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_SCREEN = "sentinel_screen"
+        const val SCREEN_CODE = "code"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        TileActions.pending.value = intent?.getStringExtra("sentinel_action")
+        readIntent(intent)
         setContent {
             MaterialTheme(colorScheme = SentinelColors) {
                 Surface(color = Color(0xFF0B0D11), modifier = Modifier.fillMaxSize()) {
@@ -80,7 +87,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        TileActions.pending.value = intent.getStringExtra("sentinel_action")
+        readIntent(intent)
+    }
+
+    private fun readIntent(intent: android.content.Intent?) {
+        TileActions.pending.value = intent?.getStringExtra("sentinel_action")
+        intent?.getStringExtra(EXTRA_SCREEN)?.let { TileActions.screen.value = it }
     }
 }
 
@@ -91,7 +103,15 @@ private fun WatchApp() {
     var session by remember { mutableStateOf(store.load()) }
     var screen by remember { mutableStateOf(if (session == null) "pair" else "home") }
     val pending by TileActions.pending.collectAsState()
+    val requestedScreen by TileActions.screen.collectAsState()
     val active = session
+
+    LaunchedEffect(requestedScreen, active) {
+        if (requestedScreen != null && active != null) {
+            screen = requestedScreen!!
+            TileActions.screen.value = null
+        }
+    }
 
     if (active != null && pending != null) {
         QuickActionScreen(pending!!, active) { TileActions.pending.value = null }
@@ -285,6 +305,8 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
             CircularProgressIndicator(modifier = Modifier.height(22.dp))
         }
 
+        LiveCode(session.secret)
+
         if (lockedView) {
             ActionButton("Unlock screen", enabled = online && !busy) { run("unlock_screen", needsCode = true) }
         }
@@ -309,6 +331,43 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
             Spacer(Modifier.height(2.dp))
             Text(message, fontSize = 9.sp, color = Muted, textAlign = TextAlign.Center)
         }
+    }
+}
+
+@Composable
+private fun LiveCode(secret: String) {
+    var code by remember { mutableStateOf(Totp.now(secret)) }
+    var seconds by remember { mutableStateOf(Totp.secondsRemaining()) }
+
+    LaunchedEffect(secret) {
+        while (true) {
+            code = Totp.now(secret)
+            seconds = Totp.secondsRemaining()
+            delay(1000)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            formatCode(code),
+            fontSize = 26.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 2.sp,
+        )
+        LinearProgressIndicator(
+            progress = { seconds / 30f },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp),
+            color = Color(0xFF6C8CFF),
+            trackColor = Color(0xFF2B3444),
+        )
+        Text("$seconds s", fontSize = 9.sp, color = Muted)
     }
 }
 
@@ -367,11 +426,17 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Text(session.deviceName, fontSize = 12.sp)
         Text(session.baseUrl, fontSize = 9.sp, color = Muted, textAlign = TextAlign.Center)
         Button(onClick = onTiles, modifier = Modifier.fillMaxWidth()) { Text("Tile layout") }
+        Text(
+            "Complication: long-press the watch face, pick a slot, Sentinel.",
+            fontSize = 9.sp,
+            color = Muted,
+            textAlign = TextAlign.Center,
+        )
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.2.1", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 1.3.1", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }

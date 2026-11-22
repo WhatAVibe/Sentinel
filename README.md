@@ -14,7 +14,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
-[![Version](https://img.shields.io/badge/version-1.2.5-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-1.3.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -400,6 +400,21 @@ Add them from the watch's tile carousel (**Add tiles → Sentinel**):
 **Settings → Tile layout** on the watch picks which rows and buttons appear. Tiles refresh on a 30-second
 interval requested from the launcher; open the app for a guaranteed live code.
 
+### Wear OS complications
+
+The watch app is also a **complication data source**: long-press the face -> customize -> choose a slot ->
+**Sentinel**.
+
+| What | Detail |
+|---|---|
+| Label | Shows **Sentinel** (no number) |
+| Tap | Opens the app directly on the live code screen |
+| Types | `RANGED_VALUE`, `SHORT_TEXT`, `LONG_TEXT` |
+
+The code is deliberately not on the face: Wear OS throttles complication providers to a 300-second minimum,
+so a face-mounted TOTP would be stale most of the time. The home-screen strip, the code tile and the Code
+screen are always live.
+
 ---
 
 ## Customization
@@ -558,8 +573,8 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 |---|---|---|
 | Windows agent | 1.2.5 | C# / .NET 10 WPF |
 | Relay server | 1.2.4 | Python / Flask / SQLite |
-| Phone app | 1.2.5 (build 10) | Flutter |
-| Wear OS app | 1.2.1 | Kotlin / Compose / Tiles |
+| Phone app | 1.2.6 (build 11) | Flutter |
+| Wear OS app | 1.3.1 | Kotlin / Compose / Tiles / Complications |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,
