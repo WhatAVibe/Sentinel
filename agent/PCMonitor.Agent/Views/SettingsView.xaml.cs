@@ -12,7 +12,6 @@ namespace PCMonitor.Agent.Views;
 public partial class SettingsView : UserControl
 {
     private bool _loading;
-    private bool _secretVisible;
     private readonly DispatcherTimer _statusTimer;
     private readonly ObservableCollection<PhoneDto> _phones = new();
 
@@ -87,8 +86,6 @@ public partial class SettingsView : UserControl
         TrayCheck.IsChecked = cfg.MinimizeToTray;
         BalloonCheck.IsChecked = cfg.BalloonNotifications;
 
-        SecretText.Text = new string('•', 28);
-        _secretVisible = false;
         DirectCodeText.Text = App.Host.EnsureLocalPairCode();
         _loading = false;
     }
@@ -417,25 +414,6 @@ public partial class SettingsView : UserControl
     {
         App.Host.InvalidateLocalPairCode();
         DirectCodeText.Text = App.Host.EnsureLocalPairCode();
-    }
-
-    private void Reveal_Click(object sender, RoutedEventArgs e)
-    {
-        _secretVisible = !_secretVisible;
-        SecretText.Text = _secretVisible ? App.Host.Config.TotpSecret : new string('•', 28);
-    }
-
-    private void CopySecret_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Clipboard.SetText(App.Host.Config.TotpSecret);
-            ServerStatus.Text = "2FA secret copied.";
-        }
-        catch
-        {
-            // ignored
-        }
     }
 
     private async Task RefreshRelayVersionAsync()

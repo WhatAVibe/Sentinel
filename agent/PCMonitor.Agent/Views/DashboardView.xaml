@@ -86,27 +86,14 @@
                 </Grid>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="2FA code" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="CodeSecondsText" Style="{StaticResource MutedText}" Margin="10,0,0,0"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <TextBlock x:Name="CodeText" Text="------" FontFamily="Consolas" FontSize="30"
-                                   FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="0,4,0,0" />
-                        <ProgressBar x:Name="CodeProgress" Maximum="30" Value="0" Height="4" Margin="0,8,0,0" />
-                        <TextBlock x:Name="CodeHintText" Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                   Text="Works while away mode is active. Copy it, then disarm." TextWrapping="Wrap" />
+            <Border x:Name="CodeCard" Style="{StaticResource Card}" Margin="0,12,0,0">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="2FA stays on your phone and watch" FontSize="13" FontWeight="SemiBold" />
                     </StackPanel>
-                    <Button x:Name="CopyCodeButton" Grid.Column="1" Content="Copy code" Style="{StaticResource GhostButton}"
-                            Padding="16,9" VerticalAlignment="Center" Margin="18,0,0,0" Click="CopyCode_Click" />
-                </Grid>
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="This PC verifies codes but never shows or copies them. Open Sentinel on your phone or watch for the current code." />
+                </StackPanel>
             </Border>
 
             <Border Background="#241E12" BorderBrush="#4A3A1E" BorderThickness="1" CornerRadius="16"

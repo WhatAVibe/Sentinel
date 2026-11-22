@@ -125,7 +125,6 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **Messages** | Styled toast / dialog / alert / banner, fullscreen takeover, reply from the PC |
 | **Away mode** | Screensaver, optional lock delay, random-interval screenshots, extra shots on activity |
 | **2FA everywhere** | TOTP gates unlock, disarm, secure-lock release, phone removal and agent exit |
-| **2FA on the desktop** | The dashboard shows the live code and its countdown; copy it from the card or the tray while away mode is active |
 | **Clipboard push** | Tap the live code on the phone or watch to put it on the PC clipboard, then Ctrl+V |
 | **Hardware key** | Link a FIDO2 key (YubiKey, Flipper) and unlock locally with a touch |
 | **Secure lock** | Full-desktop 2FA lock that swallows shortcuts and input until the code is entered |
@@ -574,7 +573,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.3.1 | C# / .NET 10 WPF |
+| Windows agent | 1.3.2 | C# / .NET 10 WPF |
 | Relay server | 1.2.5 | Python / Flask / SQLite |
 | Phone app | 1.3.0 (build 12) | Flutter |
 | Wear OS app | 1.3.2 | Kotlin / Compose / Tiles / Complications |

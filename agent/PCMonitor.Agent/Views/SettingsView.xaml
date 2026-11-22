@@ -276,24 +276,9 @@
                               Content="Accept self-signed HTTPS certificates (home server)"
                               Checked="Toggle_Changed" Unchecked="Toggle_Changed" />
                     <Border Style="{StaticResource Divider}" />
-                    <TextBlock Text="Two-factor secret" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock Text="Shared with your phone. Any TOTP app works — phone, Yubico Authenticator or a Flipper Zero."
+                    <TextBlock Text="Two-factor authentication" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="The secret lives on your phone and watch. This PC only verifies codes; it never reveals or copies them."
                                Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                    <Grid Margin="0,10,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Background="#0E1218" BorderBrush="{StaticResource Line}" BorderThickness="1"
-                                CornerRadius="8" Padding="10,7">
-                            <TextBlock x:Name="SecretText" FontFamily="Consolas" FontSize="12" TextTrimming="CharacterEllipsis" />
-                        </Border>
-                        <Button Grid.Column="1" Content="Reveal" Style="{StaticResource GhostButton}" Padding="12,7"
-                                Margin="8,0,0,0" Click="Reveal_Click" />
-                        <Button Grid.Column="2" Content="Copy" Style="{StaticResource GhostButton}" Padding="12,7"
-                                Margin="8,0,0,0" Click="CopySecret_Click" />
-                    </Grid>
                     <Border Style="{StaticResource Divider}" />
                     <TextBlock Text="Physical security key (FIDO2)" FontSize="12" FontWeight="SemiBold" />
                     <TextBlock Text="Link a YubiKey, a Flipper Zero with FIDO, or any FIDO2 key. Local unlocks can then take a key touch instead of a typed code."

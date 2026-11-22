@@ -48,6 +48,9 @@ the 2FA code and does not protect the relay.
 - Rate limits: 6 code attempts/minute per device, then HTTP 429. The mobile app also rate-limits itself.
 - Works with any authenticator: the app's Security tab, Yubico Authenticator, a Flipper Zero TOTP app,
   etc. The tray dialog accepts the six digits typed manually.
+- **The PC never renders or copies the secret or a generated code.** Codes are only displayed on external
+  devices (phone, watch, Flipper); the agent stores the secret with DPAPI solely to verify codes locally.
+  Writing the code to the PC clipboard is an explicit action from an external device, not a desktop feature.
 - Optional ADB presence requirement adds a "something you have nearby" factor for disarming.
 - **Physical security key (FIDO2).** Settings → Physical security key links a YubiKey, a Flipper Zero with
   the FIDO app, or any CTAP2 authenticator through the Windows WebAuthn API. Once linked, local unlock

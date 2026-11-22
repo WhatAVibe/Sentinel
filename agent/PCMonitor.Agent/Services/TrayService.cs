@@ -12,7 +12,6 @@ public sealed class TrayService : IDisposable
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _awayItem;
     private readonly ToolStripMenuItem _disarmItem;
-    private readonly ToolStripMenuItem _codeItem;
     private readonly ToolStripMenuItem _startupItem;
     private readonly Icon _generatedIcon;
     private readonly Action _show;
@@ -42,7 +41,6 @@ public sealed class TrayService : IDisposable
         {
             Checked = StartupManager.IsEnabled()
         };
-        _codeItem = new ToolStripMenuItem("Copy 2FA code", null, (_, _) => CopyCode());
 
         var menu = new ContextMenuStrip
         {
@@ -57,7 +55,6 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Lock PC", null, (_, _) => PowerActions.Lock()));
         menu.Items.Add(new ToolStripMenuItem("Secure lock (2FA)", null, (_, _) => _host.EnterSecureLock("Locked from the tray menu.")));
-        menu.Items.Add(_codeItem);
         menu.Items.Add(new ToolStripMenuItem("Take screenshot", null, (_, _) => _ = _host.CaptureAndUploadAsync("tray")));
         menu.Items.Add(_awayItem);
         menu.Items.Add(_disarmItem);
@@ -67,7 +64,6 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => _exit()));
         foreach (ToolStripItem item in menu.Items) item.ForeColor = Color.FromArgb(230, 233, 239);
-        menu.Opening += (_, _) => UpdateCodeItem();
 
         _icon = new NotifyIcon
         {
@@ -123,29 +119,6 @@ public sealed class TrayService : IDisposable
             await _host.EnableAwayAsync("tray");
         else
             _disarm();
-    }
-
-    private void CopyCode()
-    {
-        try
-        {
-            var code = Totp.Now(_host.Config.TotpSecret);
-            if (string.IsNullOrEmpty(code)) return;
-            Clipboard.SetText(code);
-            ShowBalloon("Sentinel", $"2FA code {code} copied to the clipboard.");
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private void UpdateCodeItem()
-    {
-        var code = Totp.Now(_host.Config.TotpSecret);
-        _codeItem.Text = string.IsNullOrEmpty(code)
-            ? "Copy 2FA code"
-            : $"Copy 2FA code  ·  {code}  ({Totp.SecondsRemaining()}s)";
     }
 
     private void ToggleStartup()
