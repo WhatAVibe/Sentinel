@@ -38,7 +38,7 @@ val TILE_ACTIONS = listOf(
     "copy" to "Copy",
 )
 
-private data class TileSnapshot(
+internal data class TileSnapshot(
     val paired: Boolean,
     val name: String,
     val online: Boolean,
@@ -48,7 +48,7 @@ private data class TileSnapshot(
     val seconds: Int,
 )
 
-private fun loadSnapshot(context: Context): TileSnapshot {
+internal fun loadSnapshot(context: Context): TileSnapshot {
     val session = Store(context).load()
         ?: return TileSnapshot(false, "Sentinel", false, false, false, "------", 0)
     val code = Totp.now(session.secret)

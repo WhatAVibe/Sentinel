@@ -10,31 +10,51 @@ import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class SentinelComplicationService : SuspendingComplicationDataSourceService() {
 
-    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? =
-        data(request.complicationType)
+    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
+        val snapshot = withContext(Dispatchers.IO) { loadSnapshot(this@SentinelComplicationService) }
+        return data(request.complicationType, snapshot)
+    }
 
-    override fun getPreviewData(type: ComplicationType): ComplicationData? = data(type)
+    override fun getPreviewData(type: ComplicationType): ComplicationData? =
+        data(type, TileSnapshot(true, "VIBE", true, false, false, "123456", 18))
 
-    private fun data(type: ComplicationType): ComplicationData? {
+    private fun statusLine(snapshot: TileSnapshot): String = when {
+        !snapshot.paired -> "Pair in the app"
+        !snapshot.online -> "Offline"
+        snapshot.secureLock -> "Secure lock"
+        snapshot.away -> "Away"
+        else -> "Online"
+    }
+
+    private fun code(snapshot: TileSnapshot): String =
+        if (snapshot.paired) snapshot.code.chunked(3).joinToString(" ") else "------"
+
+    private fun data(type: ComplicationType, snapshot: TileSnapshot): ComplicationData? {
+        val status = PlainComplicationText.Builder(statusLine(snapshot)).build()
+        val code = PlainComplicationText.Builder(code(snapshot)).build()
         val label = PlainComplicationText.Builder("Sentinel").build()
-        val description = PlainComplicationText.Builder("Open Sentinel").build()
         return when (type) {
             ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(
+                snapshot.seconds.coerceIn(0, 30).toFloat(),
                 0f,
-                0f,
-                1f,
-                description,
+                30f,
+                status,
             )
-                .setText(label)
+                .setText(code)
                 .setTapAction(openApp())
                 .build()
-            ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(label, description)
+            ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(status, code)
                 .setTapAction(openApp())
                 .build()
-            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(label, description)
+            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(
+                PlainComplicationText.Builder("${statusLine(snapshot)} · ${code(snapshot)}").build(),
+                label,
+            )
                 .setTapAction(openApp())
                 .build()
             else -> null

@@ -4,7 +4,7 @@ Flask + SQLite relay for Sentinel. It stores devices, linked phones/watch, event
 and brokers commands between the PC agent and the mobile clients. It never sees your Windows password and
 cannot unlock the PC on its own.
 
-Version: **1.3.3** (`sentinel_server/config.py`). Protocol: `v1.2`.
+Version: **1.3.4** (`sentinel_server/config.py`). Protocol: `v1.2`.
 
 ## Run
 
@@ -29,11 +29,22 @@ The API lives under `/api/v1`, the status page at `/`. Default port `8765`.
 | `storage_dir` | SQLite and screenshot storage (default `storage`) |
 | `retention_days` | Event and screenshot retention |
 | `offline_alert_seconds` | How long the PC can be quiet before "offline" is raised |
+| `disk_alert_percent` | Free-space percentage that triggers a low-disk event (0 disables) |
+| `battery_alert_percent` | Battery percentage that triggers a low-battery event while discharging (0 disables) |
 | `ntfy_url` / `ntfy_topic` | Optional push notifications |
 
 Data lives in `storage/sentinel.db` plus `storage/shots/`. Back up that directory.
 
 ## Deploy
+
+Docker (from the repository root):
+
+```bash
+docker compose up -d --build
+```
+
+The compose file publishes `8765` and keeps `/data` in the `sentinel-data` volume. Put Caddy/Tailscale in
+front of it for TLS.
 
 Linux with systemd:
 
@@ -65,3 +76,17 @@ python tests/smoke.py http://127.0.0.1:8799
 ```
 
 The smoke test expects a relay already running on that port. API reference: [../docs/API.md](../docs/API.md).
+
+## Backup
+
+`storage/` is the whole state (SQLite + screenshots). Use the included tool; it uses SQLite's online backup
+API, so it is safe while the relay is running and under WAL:
+
+```bash
+python tools/backup.py --config config.json --out /var/backups/sentinel --keep-days 14
+```
+
+The archive contains `sentinel.db`, `config.json`, `shots/` and a manifest. Restore by stopping the relay,
+replacing `storage/sentinel.db` and `storage/shots/`, then starting it again. Schedule it with cron or a
+systemd timer; keep one copy off the host. Without a backup, a lost `sentinel.db` means every PC must be
+re-paired.

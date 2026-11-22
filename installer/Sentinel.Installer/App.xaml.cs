@@ -9,6 +9,12 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (e.Args.Any(arg => string.Equals(arg, "--silent", StringComparison.OrdinalIgnoreCase)))
+        {
+            var exitCode = Task.Run(() => SilentInstall.RunAsync(e.Args)).GetAwaiter().GetResult();
+            Environment.Exit(exitCode);
+            return;
+        }
         if (e.Args.Any(arg => string.Equals(arg, "--uninstall", StringComparison.OrdinalIgnoreCase)))
         {
             var installed = InstallerCore.FindInstalled() ?? InstallerCore.DefaultInstallDir;

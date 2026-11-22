@@ -33,6 +33,11 @@ class Metrics {
   final int uptimeSeconds;
   final String user;
   final String hostname;
+  final int diskUsedMb;
+  final int diskTotalMb;
+  final int diskFreeMb;
+  final int batteryPercent;
+  final bool batteryCharging;
 
   const Metrics({
     this.cpuPercent = 0,
@@ -41,12 +46,28 @@ class Metrics {
     this.uptimeSeconds = 0,
     this.user = '',
     this.hostname = '',
+    this.diskUsedMb = 0,
+    this.diskTotalMb = 0,
+    this.diskFreeMb = 0,
+    this.batteryPercent = -1,
+    this.batteryCharging = false,
   });
 
   double get memPercent => memTotalMb == 0 ? 0 : memUsedMb * 100 / memTotalMb;
   String get memText => memTotalMb == 0
       ? '—'
       : '${(memUsedMb / 1024).toStringAsFixed(1)} / ${(memTotalMb / 1024).toStringAsFixed(1)} GB';
+
+  double get diskPercent => diskTotalMb == 0 ? 0 : diskUsedMb * 100 / diskTotalMb;
+  bool get hasDisk => diskTotalMb > 0;
+  String get diskText => diskTotalMb == 0
+      ? '—'
+      : '${(diskFreeMb / 1024).toStringAsFixed(1)} GB free of ${(diskTotalMb / 1024).toStringAsFixed(0)} GB';
+
+  bool get hasBattery => batteryPercent >= 0;
+  String get batteryText => batteryPercent < 0
+      ? ''
+      : '$batteryPercent%${batteryCharging ? ' charging' : ''}';
 
   String get uptimeText {
     if (uptimeSeconds <= 0) return '—';
@@ -61,6 +82,11 @@ class Metrics {
         uptimeSeconds: asInt(json['uptime_seconds']),
         user: asString(json['user']),
         hostname: asString(json['hostname']),
+        diskUsedMb: asInt(json['disk_used_mb']),
+        diskTotalMb: asInt(json['disk_total_mb']),
+        diskFreeMb: asInt(json['disk_free_mb']),
+        batteryPercent: asInt(json['battery_percent'], -1),
+        batteryCharging: asBool(json['battery_charging']),
       );
 }
 
@@ -394,7 +420,7 @@ const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
 /// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
 String sentinelDeviceName = '';
 
-const sentinelAppVersion = '1.5.1';
+const sentinelAppVersion = '1.6.0';
 
 Future<void> loadDeviceName() async {
   try {

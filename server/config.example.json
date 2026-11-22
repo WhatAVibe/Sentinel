@@ -15,5 +15,7 @@
   "ntfy_topic": "",
   "offline_alert_seconds": 300,
   "power_check_seconds": 20,
-  "boot_notify": true
+  "boot_notify": true,
+  "disk_alert_percent": 10,
+  "battery_alert_percent": 15
 }

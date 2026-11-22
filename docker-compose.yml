@@ -1,0 +1,23 @@
+services:
+  sentinel:
+    build: .
+    image: sentinel-relay:latest
+    container_name: sentinel-relay
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - sentinel-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/v1/health', timeout=4)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  sentinel-data:

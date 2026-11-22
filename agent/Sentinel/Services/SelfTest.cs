@@ -53,7 +53,10 @@ public static class SelfTest
         Add("metrics", () =>
         {
             var metrics = SystemMetrics.Collect();
-            return metrics.MemTotalMb > 0 && metrics.CpuPercent >= 0 && !string.IsNullOrWhiteSpace(metrics.User);
+            return metrics.MemTotalMb > 0 && metrics.CpuPercent >= 0 &&
+                   !string.IsNullOrWhiteSpace(metrics.User) &&
+                   metrics.DiskTotalMb > 0 && metrics.DiskFreeMb >= 0 &&
+                   metrics.BatteryPercent >= -1;
         });
 
         Add("monitors", () =>

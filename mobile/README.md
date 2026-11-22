@@ -8,17 +8,18 @@ gives you the dashboard, 2FA code, screenshots, messages and every remote action
 - Activity timeline and screenshot gallery, both paged from the relay
 - Messages with toast / dialog / alert / banner / fullscreen styles and PC replies
 - Notification filters: security, power, messages, screenshots, clipboard, everything else
+- Disk and battery cards, and activity/audit export to JSON or CSV from Settings
 - Multiple PCs with local names, plus a direct ADB mode for a LAN-only setup
 - Optional Flipper Zero bridge: the phone relays BLE commands and holds the secret
 - PIN + biometrics lock, sessions in Android Keystore
 
 ## Install
 
-Download **[Sentinel-Phone-1.5.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.5.1.apk)**
+Download **[Sentinel-Phone-1.6.0.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.6.0.apk)**
 (Android 8.0+) and open it, or:
 
 ```powershell
-adb install -r Sentinel-Phone-1.5.1.apk
+adb install -r Sentinel-Phone-1.6.0.apk
 ```
 
 Releases are unsigned; Android asks you to allow installs from your file manager or ADB.
@@ -53,6 +54,6 @@ VPNs and per-app adb restrictions can block the reverse tunnel.
 
 ## Release values
 
-`version:` in `pubspec.yaml` is the shipped app version (currently `1.5.1+15`) and
+`version:` in `pubspec.yaml` is the shipped app version (currently `1.6.0+16`) and
 `sentinelAppVersion` in `lib/models.dart` is what goes into `X-App-Version` so the PC can show the version
 per linked device.

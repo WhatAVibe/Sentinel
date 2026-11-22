@@ -26,7 +26,7 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "2.1.1";
+    public const string ProductVersion = "2.1.2";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
     public const string ReleasesUrl = Repository + "/releases/latest";
     public const string RelayGuideUrl = Repository + "/blob/main/docs/SETUP.md";
@@ -135,9 +135,10 @@ public static class InstallerCore
     public static string ProtectMasterPassword(string password)
     {
         if (string.IsNullOrEmpty(password)) return "";
+        const int iterations = 600_000;
         var salt = RandomNumberGenerator.GetBytes(16);
-        var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 120_000, HashAlgorithmName.SHA256, 32);
-        return Protect($"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}");
+        var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, 32);
+        return Protect($"{iterations}:{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}");
     }
 
     public static void WriteConfig(

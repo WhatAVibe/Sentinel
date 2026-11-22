@@ -3,6 +3,37 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [2.1.2] — 2026-11-22
+
+Installer 2.1.2 · Agent 1.6.2 · Relay 1.3.4 · Phone 1.6.0 (16) · Watch 1.3.5 (10) · Flipper 1.1.0
+
+### Added
+
+- **Docker packaging**: `Dockerfile`, `docker-compose.yml` and `.dockerignore` for the relay, with a
+  persistent `sentinel-data` volume and a healthcheck.
+- **Backup tooling**: `server/tools/backup.py` takes a WAL-safe SQLite online backup plus config, screenshots
+  and a manifest, with `--keep-days` retention. Documented cron/systemd and Docker restore steps.
+- **History export**: `GET /api/v1/devices/<id>/export` returns events and audit as JSON, or events/audit as
+  CSV (UTC timestamps). The phone exposes **Settings → Export** with share-sheet delivery.
+- **Disk and battery metrics**: the agent reports disk used/total/free and battery percentage/charging. The
+  phone shows a Disk bar and a Battery chip, and the relay fires one-shot low-disk and low-battery events
+  using the existing power-alert pattern (`disk_alert_percent`, `battery_alert_percent`, both configurable,
+  `0` disables).
+- **Silent install**: `Sentinel Setup.exe --silent --relay <url> --recovery <password> --report <path>` with
+  `--confirm-code`, `--confirm-file` or `--auto-confirm`, plus `--dir` and `--no-startup`. Writes a JSON
+  report (pair code, status, errors) for fleet scripts. `--auto-confirm` is documented as the explicit
+  trade-off it is.
+- **Live watch complications**: `Complications.kt` now uses the same `loadSnapshot()` as the tiles instead
+  of placeholders — the ranged complication is a real 30-second TOTP countdown ring, short/long text show
+  Online / Away / Secure lock / Offline and the current code.
+
+### Changed
+
+- Relay hot-path queries are indexed: `idx_devices_token` and `idx_mobiles_token` on `token_hash`, used by
+  every authenticated request and both WebSocket handshakes.
+- README, SETUP, server README, watch README, mobile README and the changelog cover the new Docker, backup,
+  export, metrics and complication behaviour.
+
 ## [2.1.1] — 2026-11-22
 
 Installer 2.1.1 · Agent 1.6.1 · Relay 1.3.3 · Phone 1.5.1 (15) · Watch 1.3.4 (9) · Flipper 1.1.0

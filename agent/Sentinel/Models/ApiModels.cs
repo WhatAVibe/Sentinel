@@ -53,6 +53,11 @@ public sealed class MetricsDto
     [JsonPropertyName("uptime_seconds")] public long UptimeSeconds { get; set; }
     [JsonPropertyName("user")] public string User { get; set; } = "";
     [JsonPropertyName("hostname")] public string Hostname { get; set; } = "";
+    [JsonPropertyName("disk_used_mb")] public long DiskUsedMb { get; set; }
+    [JsonPropertyName("disk_total_mb")] public long DiskTotalMb { get; set; }
+    [JsonPropertyName("disk_free_mb")] public long DiskFreeMb { get; set; }
+    [JsonPropertyName("battery_percent")] public int BatteryPercent { get; set; } = -1;
+    [JsonPropertyName("battery_charging")] public bool BatteryCharging { get; set; }
 }
 
 public sealed class StateDto

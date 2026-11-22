@@ -1,6 +1,9 @@
+import csv
+import io
 import json
 import time
 import uuid
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 
@@ -10,6 +13,7 @@ from .db import Database
 from .hub import Hub
 from .notify import push
 from .power import create_event as create_power_event
+from .power import check_metric_alerts
 from .security import (
     hash_token,
     limiter,
@@ -586,6 +590,8 @@ def agent_heartbeat():
                 severity="notice",
             )
 
+    check_metric_alerts(cfg(), db(), hub(), g.device_id, device["name"], metrics)
+
     return jsonify(ok=True, server_time=now, device=payload)
 
 
@@ -1141,6 +1147,107 @@ def device_audit(did):
             }
         )
     return jsonify(audit=audit)
+
+
+@bp.get("/devices/<did>/export")
+@mobile_required
+def export_device(did):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
+    if not limiter.allow(f"export:{g.mobile['id']}", 6, 60):
+        return jsonify(error="too_many_attempts"), 429
+
+    what = (request.args.get("what") or "all").lower()
+    fmt = (request.args.get("format") or "json").lower()
+    if what not in ("events", "audit", "all"):
+        return jsonify(error="bad_what"), 400
+    if fmt not in ("json", "csv"):
+        return jsonify(error="bad_format"), 400
+
+    device = db().one("SELECT * FROM devices WHERE id = ?", (did,))
+    events = []
+    audit = []
+    if what in ("events", "all"):
+        for row in db().all("SELECT * FROM events WHERE device_id = ? ORDER BY id", (did,)):
+            events.append(
+                {
+                    "id": row["id"],
+                    "ts": row["ts"],
+                    "category": row["category"],
+                    "severity": row["severity"],
+                    "title": row["title"],
+                    "detail": parse_json(row["detail"], row["detail"]),
+                }
+            )
+    if what in ("audit", "all"):
+        for row in db().all(
+            "SELECT * FROM audit WHERE detail LIKE ? ORDER BY id", (f"%{did}%",)
+        ):
+            audit.append(
+                {
+                    "id": row["id"],
+                    "ts": row["ts"] * 1000,
+                    "actor": row["actor"],
+                    "action": row["action"],
+                    "detail": parse_json(row["detail"], row["detail"]),
+                }
+            )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    safe_name = "".join(c if c.isalnum() else "-" for c in (device["name"] if device else "device"))[:32]
+    filename = f"sentinel-{safe_name}-{stamp}-{what}.{fmt}"
+
+    if fmt == "json":
+        payload = {
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "server_version": cfg().version,
+            "device": {
+                "id": did,
+                "name": device["name"] if device else "",
+                "platform": device["platform"] if device else "",
+            },
+            "what": what,
+            "events": events,
+            "audit": audit,
+        }
+        body = json.dumps(payload, indent=2, ensure_ascii=False)
+        response = current_app.response_class(body, mimetype="application/json")
+    else:
+        if what == "all":
+            return jsonify(error="choose_events_or_audit"), 400
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        if what == "events":
+            writer.writerow(["id", "ts_utc", "category", "severity", "title", "detail"])
+            for event in events:
+                writer.writerow(
+                    [
+                        event["id"],
+                        datetime.fromtimestamp(event["ts"] / 1000, timezone.utc).isoformat(),
+                        event["category"],
+                        event["severity"],
+                        event["title"],
+                        json.dumps(event["detail"], ensure_ascii=False),
+                    ]
+                )
+        else:
+            writer.writerow(["id", "ts_utc", "actor", "action", "detail"])
+            for row in audit:
+                writer.writerow(
+                    [
+                        row["id"],
+                        datetime.fromtimestamp(row["ts"] / 1000, timezone.utc).isoformat(),
+                        row["actor"],
+                        row["action"],
+                        json.dumps(row["detail"], ensure_ascii=False),
+                    ]
+                )
+        response = current_app.response_class(buffer.getvalue(), mimetype="text/csv")
+
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.headers["Cache-Control"] = "private, no-store"
+    db().audit(g.actor, "device.exported", {"device": did, "what": what, "format": fmt})
+    return response
 
 
 @bp.get("/devices/<did>/phones")

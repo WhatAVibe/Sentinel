@@ -1,0 +1,17 @@
+.git
+.github
+.vscode
+agent
+installer
+mobile
+watch
+flipper
+docs
+*.sln
+*.jpg
+*.png
+*.zip
+**/__pycache__
+**/*.pyc
+server/config.json
+server/storage

@@ -73,6 +73,30 @@ class _Http {
         return response;
       });
 
+  Future<List<int>> getBytes(String path) async {
+    final watch = Stopwatch()..start();
+    try {
+      final response = await client.get(uri(path), headers: headers).timeout(const Duration(seconds: 45));
+      DiagLog.instance.add(
+          'http', 'GET $path → ${response.statusCode} (${watch.elapsedMilliseconds} ms)');
+      if (response.statusCode >= 400) {
+        Map<String, dynamic>? body;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map<String, dynamic>) body = decoded;
+        } catch (_) {
+          body = null;
+        }
+        throw ApiError(response.statusCode, asString(body?['error'], 'http_${response.statusCode}'));
+      }
+      return response.bodyBytes;
+    } catch (error) {
+      DiagLog.instance.add('http', 'GET $path failed (${watch.elapsedMilliseconds} ms): $error',
+          error: true);
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> _run(
     String method,
     String path,
@@ -115,6 +139,7 @@ abstract class SentinelClient {
   Future<void> renameDevice(String name);
   Future<String> fetchRelayVersion();
   Future<void> removeDevice();
+  Future<List<int>> exportData(String what, String format);
   void dispose();
 }
 
@@ -324,6 +349,10 @@ class RelayClient implements SentinelClient {
   }
 
   @override
+  Future<List<int>> exportData(String what, String format) =>
+      _api.getBytes('/api/v1/devices/$_deviceId/export?what=$what&format=$format');
+
+  @override
   void dispose() {
     _disposed = true;
     _retry?.cancel();
@@ -456,6 +485,17 @@ class DirectClient implements SentinelClient {
 
   @override
   Future<void> removeDevice() async {}
+
+  @override
+  Future<List<int>> exportData(String what, String format) async {
+    if (format != 'json') throw const ApiError(400, 'unsupported_command');
+    final body = await _api.get('/local/events?since=0&limit=500');
+    return utf8.encode(jsonEncode({
+      'exported_at': DateTime.now().toIso8601String(),
+      'what': 'events',
+      'events': body['events'] ?? const [],
+    }));
+  }
 
   @override
   void dispose() {

@@ -20,6 +20,8 @@ DEFAULTS = {
     "offline_alert_seconds": 300,
     "power_check_seconds": 20,
     "boot_notify": True,
+    "disk_alert_percent": 10,
+    "battery_alert_percent": 15,
 }
 
 
@@ -34,7 +36,7 @@ class Config:
         self.storage_dir = storage
         self.shots_dir = storage / "shots"
         self.db_path = storage / "sentinel.db"
-        self.version = "1.3.3"
+        self.version = "1.3.4"
 
     @classmethod
     def load(cls, path: str | os.PathLike) -> "Config":

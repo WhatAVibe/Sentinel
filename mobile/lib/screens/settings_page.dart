@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../core/api.dart';
 import '../core/app_state.dart';
@@ -14,6 +18,24 @@ import 'tutorial.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
+
+  Future<void> _export(BuildContext context, String what, String format) async {
+    final state = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await state.exportHistory(what, format);
+      final dir = await getTemporaryDirectory();
+      final stamp = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
+      final file = File('${dir.path}/sentinel-$what-$stamp.$format');
+      await file.writeAsBytes(bytes, flush: true);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: format == 'csv' ? 'text/csv' : 'application/json')],
+        subject: 'Sentinel $what export',
+      );
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(describeError(error))));
+    }
+  }
 
   Future<void> _editServer(BuildContext context) async {
     final state = context.read<AppState>();
@@ -348,12 +370,46 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          const SectionHeader('Export'),
+          CardBox(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Activity log (JSON)', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Everything the relay still retains for this PC',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.ios_share_rounded, size: 18, color: C.muted),
+                  onTap: () => _export(context, 'events', 'json'),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Activity log (CSV)', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Spreadsheet-friendly, UTC timestamps',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.ios_share_rounded, size: 18, color: C.muted),
+                  onTap: () => _export(context, 'events', 'csv'),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Audit log (CSV)', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Pairing, commands, unlocks and bad-code attempts',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.ios_share_rounded, size: 18, color: C.muted),
+                  onTap: () => _export(context, 'audit', 'csv'),
+                ),
+              ],
+            ),
+          ),
           const SectionHeader('About'),
           CardBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.5.1'),
+                const _Line('App', 'Sentinel 1.6.0'),
                 _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'

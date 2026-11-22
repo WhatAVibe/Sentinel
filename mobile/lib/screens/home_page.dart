@@ -341,6 +341,15 @@ class _Hero extends StatelessWidget {
             right: device.metrics.memText,
             color: C.success,
           ),
+          if (device.metrics.hasDisk) ...[
+            const SizedBox(height: 10),
+            _Bar(
+              label: 'Disk',
+              value: device.metrics.diskPercent / 100,
+              right: device.metrics.diskText,
+              color: C.warning,
+            ),
+          ],
           const SizedBox(height: 18),
           Wrap(
             spacing: 8,
@@ -349,6 +358,11 @@ class _Hero extends StatelessWidget {
               StatChip(label: 'Displays', value: '${device.state.monitors}'),
               StatChip(label: 'Session', value: device.locked ? 'locked' : device.state.session),
               StatChip(label: 'Uptime', value: device.metrics.uptimeText),
+              if (device.metrics.hasBattery)
+                StatChip(
+                  label: 'Battery',
+                  value: device.metrics.batteryText,
+                ),
               StatChip(label: 'Last beat', value: formatRelative(device.lastSeen)),
             ],
           ),

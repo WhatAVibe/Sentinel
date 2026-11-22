@@ -6,11 +6,11 @@ Every component is published on **[Releases](https://github.com/WhatAVibe/Sentin
 
 | Component | Asset |
 |---|---|
-| Windows agent + installer | `Sentinel-Setup-2.1.1.exe` |
-| Windows agent only | `Sentinel-Agent-1.6.1-win-x64.exe` |
-| Phone (Android 8+) | `Sentinel-Phone-1.5.1.apk` |
-| Wear OS 3+ | `Sentinel-Watch-1.3.4.apk` |
-| Relay | `Sentinel-Relay-1.3.3.zip` |
+| Windows agent + installer | `Sentinel-Setup-2.1.2.exe` |
+| Windows agent only | `Sentinel-Agent-1.6.2-win-x64.exe` |
+| Phone (Android 8+) | `Sentinel-Phone-1.6.0.apk` |
+| Wear OS 3+ | `Sentinel-Watch-1.3.5.apk` |
+| Relay | `Sentinel-Relay-1.3.4.zip` |
 | Checksums | `SHA256SUMS.txt` |
 
 The relay is the only piece that has to be reachable from the internet; the PC and phone connect outbound
@@ -69,6 +69,32 @@ sudo useradd -r -s /bin/false sentinel
 sudo chown -R sentinel /opt/sentinel/server
 sudo systemctl enable --now sentinel
 ```
+
+### Docker
+
+From the repository root:
+
+```bash
+docker compose up -d --build
+```
+
+`docker-compose.yml` publishes `8765`, keeps everything in the `sentinel-data` volume (`/data/config.json`,
+`/data/storage`) and defines a healthcheck. To change config, edit
+`/var/lib/docker/volumes/sentinel_sentinel-data/_data/config.json` (or mount a host directory instead) and
+`docker compose restart`.
+
+### Backups
+
+`storage/` holds the SQLite database, all pairing state and the screenshots. Back up while it runs with the
+included tool (SQLite online backup, WAL-safe):
+
+```bash
+python server/tools/backup.py --config server/config.json --out /var/backups/sentinel --keep-days 14
+```
+
+Add it to cron or a systemd timer and copy the archive off the host. Restoring: stop the relay, replace
+`storage/sentinel.db` and `storage/shots/` from the archive, start it. With Docker, restore into the
+`sentinel-data` volume. Losing `sentinel.db` means every PC has to be paired again.
 
 ### Reachability
 

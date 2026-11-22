@@ -17,6 +17,48 @@ self-contained agent, so a clean Windows 10/11 x64 machine needs nothing preinst
 - Adds the tray autostart entry and an optional Start-menu shortcut
 - Builds stay unsigned; publisher metadata is `WhatAVibe`
 
+## Unattended install
+
+For a fleet, the setup can run without the wizard:
+
+```powershell
+Sentinel Setup.exe --silent --relay https://sentinel.example.com --recovery "a long recovery password" `
+  --confirm-code 123456 --report C:\sentinel-install.json
+```
+
+| Flag | Meaning |
+|---|---|
+| `--silent` | Run without any window |
+| `--relay <url>` | Relay base URL (http/https) |
+| `--recovery <password>` | Recovery password, at least 8 characters (required) |
+| `--dir <path>` | Install directory, default `%APPDATA%\Sentinel` |
+| `--confirm-code <code>` | 6-digit code shown on the approving phone (if already known) |
+| `--confirm-file <path>` | Wait for the 6-digit code to be written to this file (scripted approval) |
+| `--auto-confirm` | Compute the code from the secret the PC just received and confirm without the phone prompt |
+| `--no-startup` | Do not add the tray autostart entry |
+| `--report <path>` | JSON report (default `%TEMP%\sentinel-install.json`) with `pair_code`, `status`, `ok` |
+
+The command creates the pair request, writes `pair_code` to the report, waits for a phone to approve it
+(up to 10 minutes), installs, writes the config, registers the uninstaller and starts the agent. Without a
+`--confirm-code` or `--auto-confirm`, the device stays pending until someone confirms it in Linked devices.
+`--auto-confirm` is convenient for scripted rollouts but removes the human confirmation step: the machine
+that received the TOTP secret confirms itself. Only use it where you already trust the machine and the
+relay.
+
+Example with phone approval from a script:
+
+```powershell
+Start-Process "Sentinel Setup.exe" -ArgumentList '--silent','--relay','https://sentinel.example.com',
+  '--recovery','...','--confirm-file','C:\sentinel-code.txt','--report','C:\sentinel-install.json'
+# 1. enter pair_code from C:\sentinel-install.json in the phone app
+# 2. approve it, read the 6-digit code on the phone
+# 3. Set-Content C:\sentinel-code.txt 123456   # the installer picks it up and finishes
+```
+
+To roll out fully unattended, pass `--auto-confirm` instead; the installer derives the confirmation code
+from the TOTP secret returned to it during the claim. That skips the human step, so reserve it for machines
+you already control.
+
 ## Build
 
 ```powershell

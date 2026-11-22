@@ -453,6 +453,12 @@ class AppState extends ChangeNotifier {
     await refreshDevice();
   }
 
+  Future<List<int>> exportHistory(String what, String format) async {
+    final current = client;
+    if (current == null) throw const ApiError(400, 'not_paired');
+    return current.exportData(what, format);
+  }
+
   Future<void> unpair() async {
     final current = client;
     final removedId = session?.deviceId;

@@ -8,11 +8,12 @@ screen, Screenshot, Ring, **four tiles** including a configurable all-in-one das
 
 Long-press the watch face -> customize -> pick a complication slot -> **Sentinel**.
 
-- The complication shows **Sentinel** and opens the app on the live code screen when tapped.
-- It deliberately shows no number: Wear OS throttles providers to `UPDATE_PERIOD_SECONDS` (minimum 300 s),
-  so a face-mounted TOTP would be stale most of the time. Fresh codes live on the home-screen strip, the
-  code tile and the Code screen.
-- Supported types: `RANGED_VALUE`, `SHORT_TEXT`, `LONG_TEXT`, so it fits text, icon and arc slots.
+- `RANGED_VALUE` (text, icon and arc slots): the bar/ring is the **2FA countdown** (30-second window), the
+  title shows the live state (Online / Away / Secure lock / Offline) and the text is the current code.
+- `SHORT_TEXT` shows the state with the code as the content description.
+- `LONG_TEXT` shows `state · code`.
+- Unpaired or offline states say so instead of showing a stale code.
+- Supported types: `RANGED_VALUE`, `SHORT_TEXT`, `LONG_TEXT`.
 
 ## Tiles
 

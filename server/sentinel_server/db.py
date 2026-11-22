@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS devices (
     settings TEXT NOT NULL DEFAULT '{}',
     state TEXT NOT NULL DEFAULT '{}',
     metrics TEXT NOT NULL DEFAULT '{}',
-    offline_alerted INTEGER NOT NULL DEFAULT 0
+    offline_alerted INTEGER NOT NULL DEFAULT 0,
+    disk_alerted INTEGER NOT NULL DEFAULT 0,
+    battery_alerted INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS mobiles (
@@ -119,6 +121,9 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_device ON messages(device_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_devices_token ON devices(token_hash);
+CREATE INDEX IF NOT EXISTS idx_mobiles_token ON mobiles(token_hash);
 """
 
 
@@ -218,6 +223,10 @@ class Database:
                 device_columns = [row[1] for row in conn.execute("PRAGMA table_info(devices)")]
                 if "offline_alerted" not in device_columns:
                     conn.execute("ALTER TABLE devices ADD COLUMN offline_alerted INTEGER NOT NULL DEFAULT 0")
+                if "disk_alerted" not in device_columns:
+                    conn.execute("ALTER TABLE devices ADD COLUMN disk_alerted INTEGER NOT NULL DEFAULT 0")
+                if "battery_alerted" not in device_columns:
+                    conn.execute("ALTER TABLE devices ADD COLUMN battery_alerted INTEGER NOT NULL DEFAULT 0")
                 if "is_primary" not in columns:
                     conn.execute("ALTER TABLE mobiles ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0")
                 if "app_version" not in columns:

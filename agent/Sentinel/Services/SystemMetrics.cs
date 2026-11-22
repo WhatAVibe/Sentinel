@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
@@ -38,6 +39,31 @@ public static class SystemMetrics
             _prevUser = userTicks;
         }
 
+        long diskTotal = 0;
+        long diskFree = 0;
+        try
+        {
+            var root = Path.GetPathRoot(Environment.SystemDirectory);
+            if (!string.IsNullOrEmpty(root))
+            {
+                var drive = new DriveInfo(root);
+                diskTotal = drive.TotalSize / 1024 / 1024;
+                diskFree = drive.AvailableFreeSpace / 1024 / 1024;
+            }
+        }
+        catch
+        {
+            // disk info is best-effort
+        }
+
+        var batteryPercent = -1;
+        var batteryCharging = false;
+        if (GetSystemPowerStatus(out var power) && (power.BatteryFlag & 128) == 0)
+        {
+            if (power.BatteryLifePercent != 255) batteryPercent = power.BatteryLifePercent;
+            batteryCharging = power.ACLineStatus == 1;
+        }
+
         return new MetricsDto
         {
             CpuPercent = cpu,
@@ -45,7 +71,12 @@ public static class SystemMetrics
             MemTotalMb = (long)(mem.ullTotalPhys / 1024 / 1024),
             UptimeSeconds = (long)(GetTickCount64() / 1000),
             User = Environment.UserName,
-            Hostname = Environment.MachineName
+            Hostname = Environment.MachineName,
+            DiskUsedMb = diskTotal - diskFree,
+            DiskTotalMb = diskTotal,
+            DiskFreeMb = diskFree,
+            BatteryPercent = batteryPercent,
+            BatteryCharging = batteryCharging
         };
     }
 
