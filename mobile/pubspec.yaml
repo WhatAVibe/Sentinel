@@ -1,7 +1,7 @@
 name: sentinel
 description: "Sentinel remote control for your own PC."
 publish_to: 'none'
-version: 1.4.0+13
+version: 1.5.0+14
 
 environment:
   sdk: ^3.13.0

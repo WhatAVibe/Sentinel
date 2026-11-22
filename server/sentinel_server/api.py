@@ -877,6 +877,7 @@ def agent_purge_screenshots():
 @agent_required
 def agent_purge_device():
     device_id = g.device_id
+    hub().push_to_device_clients(device_id, {"type": "unpaired"})
     shots = db().all("SELECT path FROM screenshots WHERE device_id = ?", (device_id,))
     for row in shots:
         try:

@@ -83,7 +83,7 @@ public partial class SettingsView : UserControl
 
         var link = SecurityKey.Current(cfg);
         SecurityKeyText.Text = link == null
-            ? (SecurityKey.Available ? "No key linked" : "This Windows build has no WebAuthn API")
+            ? (SecurityKey.Available ? "No key linked" : "WebView2 runtime missing — install the Edge WebView2 runtime")
             : $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
         AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version}";
         UpdateMasterStatus();
@@ -598,54 +598,50 @@ public partial class SettingsView : UserControl
 
     private void SaveMaster_Click(object sender, RoutedEventArgs e)
     {
+        var current = MasterCurrentBox.Password;
         var password = MasterNewBox.Password;
         if (password.Length < 8)
         {
-            MessageBox.Show("Use at least 8 characters.", "Recovery password",
+            MessageBox.Show("Use at least 8 characters for the new recovery password.", "Recovery password",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (password != MasterConfirmBox.Password)
         {
-            MessageBox.Show("The two passwords do not match.", "Recovery password",
+            MessageBox.Show("The new passwords do not match.", "Recovery password",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var dialog = new CodePromptWindow(
-            "Authorize recovery password",
-            "Confirm with your 2FA code or current recovery password.",
-            App.Host) { Owner = Window.GetWindow(this) };
-        if (dialog.ShowDialog() != true) return;
-        App.Host.SetMasterPassword(password);
+        if (App.Host.HasMasterPassword && !App.Host.ChangeMasterPassword(current, password))
+        {
+            MessageBox.Show("The current recovery password is not correct.", "Recovery password",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MasterCurrentBox.SelectAll();
+            MasterCurrentBox.Focus();
+            return;
+        }
+        if (!App.Host.HasMasterPassword) App.Host.SetMasterPassword(password);
+        MasterCurrentBox.Clear();
         MasterNewBox.Clear();
         MasterConfirmBox.Clear();
         UpdateMasterStatus();
-        ServerStatus.Text = "Recovery password saved.";
+        SetStatus("Recovery password changed.", 8);
     }
 
     private void ClearMaster_Click(object sender, RoutedEventArgs e)
     {
-        if (!App.Host.HasMasterPassword) return;
-        if (MessageBox.Show("Remove the recovery password? A lost device would then leave this PC locked.",
-                "Recovery password", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        var dialog = new CodePromptWindow(
-            "Authorize clearing the recovery password",
-            "Confirm with your 2FA code or the current recovery password.",
-            App.Host) { Owner = Window.GetWindow(this) };
-        if (dialog.ShowDialog() != true) return;
-        App.Host.ClearMasterPassword();
-        UpdateMasterStatus();
-        ServerStatus.Text = "Recovery password cleared.";
+        // Recovery passwords can only be changed, never cleared from the UI.
     }
 
     private void UpdateMasterStatus()
     {
         if (MasterStatusText == null) return;
         MasterStatusText.Text = App.Host.HasMasterPassword
-            ? "Set — unlocks secure lock, exit and unpair locally."
-            : "Not set — only linked devices can unlock this PC.";
+            ? "Set — enter it to choose a new one. It cannot be cleared here."
+            : "Not set — set one now; it cannot be cleared later.";
         MasterStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
             App.Host.HasMasterPassword ? "Success" : "Muted");
+        MasterCurrentBox.IsEnabled = App.Host.HasMasterPassword;
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.Root);    private void OpenLogs_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.LogsDir);

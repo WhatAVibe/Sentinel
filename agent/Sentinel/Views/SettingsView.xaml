@@ -347,14 +347,18 @@
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
                                Text="A master password that unlocks this PC locally if your linked devices are lost. Changing or clearing it needs a code from a linked device." />
                     <TextBlock x:Name="MasterStatusText" FontSize="11" Margin="0,10,0,0" />
-                    <PasswordBox x:Name="MasterNewBox" Padding="10,9" Margin="0,10,0,0" />
-                    <PasswordBox x:Name="MasterConfirmBox" Padding="10,9" Margin="0,8,0,0" />
+                    <TextBlock Text="Current recovery password" Style="{StaticResource MutedText}" Margin="0,8,0,4" />
+                    <PasswordBox x:Name="MasterCurrentBox" Padding="10,9" />
+                    <TextBlock Text="New password (at least 8 characters)" Style="{StaticResource MutedText}" Margin="0,8,0,4" />
+                    <PasswordBox x:Name="MasterNewBox" Padding="10,9" />
+                    <TextBlock Text="Confirm new password" Style="{StaticResource MutedText}" Margin="0,8,0,4" />
+                    <PasswordBox x:Name="MasterConfirmBox" Padding="10,9" />
                     <WrapPanel Margin="0,10,0,0">
-                        <Button Content="Save recovery password" Style="{StaticResource PrimaryButton}"
+                        <Button Content="Change recovery password" Style="{StaticResource PrimaryButton}"
                                 Padding="14,8" Click="SaveMaster_Click" />
-                        <Button Content="Clear" Style="{StaticResource DangerButton}" Padding="14,8"
-                                Margin="8,0,0,0" Click="ClearMaster_Click" />
                     </WrapPanel>
+                    <TextBlock Text="There is no option to clear it. Forgot it? Uninstall and reinstall Sentinel."
+                               Style="{StaticResource MutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

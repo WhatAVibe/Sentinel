@@ -1074,22 +1074,23 @@ public sealed class AgentHost : IDisposable
         {
             Category = "security",
             Severity = "warning",
-            Title = "Recovery password set",
+            Title = HasMasterPassword ? "Recovery password changed" : "Recovery password set",
             Detail = new() { ["source"] = "desktop" }
         });
         return true;
     }
 
-    public bool ClearMasterPassword()
+    public bool ChangeMasterPassword(string current, string next)
     {
-        if (!HasMasterPassword) return false;
-        MasterPassword.Clear(Config);
+        if (next.Length < 8) return false;
+        if (MasterPassword.IsSet(Config) && !MasterPassword.Verify(Config, current)) return false;
+        MasterPassword.Set(Config, next);
         SaveConfig();
         OnActivity(new ActivityEventData
         {
             Category = "security",
             Severity = "warning",
-            Title = "Recovery password cleared",
+            Title = "Recovery password changed",
             Detail = new() { ["source"] = "desktop" }
         });
         return true;

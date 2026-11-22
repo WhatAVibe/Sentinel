@@ -39,6 +39,15 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Any(a => string.Equals(a, "--test-key", StringComparison.OrdinalIgnoreCase)))
+        {
+            Host = new AgentHost();
+            var keyWindow = new SecurityKeyWindow(register: true, credentialId: "");
+            keyWindow.ShowDialog();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Length > 0 && string.Equals(e.Args[0], "--security-key", StringComparison.OrdinalIgnoreCase))
         {
             Shutdown();

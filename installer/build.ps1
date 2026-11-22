@@ -33,7 +33,3 @@ dotnet publish (Join-Path $installerDir "Sentinel.Installer.csproj") -c $Configu
 
 Get-ChildItem $out | Select-Object Name, Length | Format-Table
 Write-Host "Installer: $out\Sentinel Setup.exe"
-
-$signScript = Join-Path $root "scripts\sign.ps1"
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-& $signScript -Files @((Join-Path $out "Sentinel Setup.exe"), $agentExe)

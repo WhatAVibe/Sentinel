@@ -239,9 +239,6 @@ python server\tests\smoke.py http://127.0.0.1:8765
 
 # Agent internals (TOTP RFC vectors, multi-monitor capture, local API, adb)
 Sentinel.exe --selftest "%TEMP%\sentinel.json"
-
-# Full loop, isolated port 8799
-powershell -ExecutionPolicy Bypass -File scripts\e2e.ps1
 ```
 
 ## Troubleshooting

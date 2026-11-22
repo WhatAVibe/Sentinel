@@ -27,10 +27,6 @@ welcome.
 | Agent self-test | `Sentinel.exe --selftest out.json` |
 | Phone | `cd mobile && flutter pub get && flutter test` |
 | Watch | `cd watch && ./gradlew :app:assembleDebug` |
-| Full loop | `powershell -File scripts/e2e.ps1` |
-
-The end-to-end runner starts an isolated relay on port 8799, pairs a real agent headlessly and exercises
-screenshots, events, messages and away mode. It restores your existing agent config afterwards.
 
 ## Pull requests
 
@@ -47,7 +43,6 @@ mobile/   Flutter app (Android + Windows test target)
 watch/    Kotlin/Compose Wear OS app
 server/   Flask relay and tests
 docs/     setup, security, architecture, API
-scripts/  branding and e2e helpers
 ```
 
 ## License

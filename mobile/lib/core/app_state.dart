@@ -35,6 +35,14 @@ class AppState extends ChangeNotifier {
   bool hasPin = false;
   String? lastError;
   String relayVersion = '';
+  final Map<String, bool> notifications = {
+    'security': true,
+    'power': true,
+    'message': true,
+    'screenshot': true,
+    'clipboard': true,
+    'other': true,
+  };
 
   StreamSubscription<PushEvent>? _subscription;
   Timer? _poll;
@@ -61,6 +69,9 @@ class AppState extends ChangeNotifier {
     biometricEnabled = await store.biometricEnabled();
     hasPin = await store.hasPin();
     canUseBiometrics = await Biometrics.available();
+    for (final key in notifications.keys) {
+      notifications[key] = await store.notificationEnabled(key);
+    }
     booting = false;
 
     DiagLog.instance.add(
@@ -125,6 +136,11 @@ class AppState extends ChangeNotifier {
       shotsHasMore = shots.length >= 120;
       notifyListeners();
     } catch (error) {
+      if (error is ApiError &&
+          (error.code == 'invalid_mobile_token' || error.code == 'unauthorized')) {
+        await handleServerUnpair();
+        return;
+      }
       relayOnline = false;
       lastError = describeError(error);
       notifyListeners();
@@ -151,8 +167,12 @@ class AppState extends ChangeNotifier {
           if (item.severity == 'warning' ||
               item.category == 'security' ||
               item.category == 'message' ||
-              item.category == 'power') {
-            Notifier.show(item.title, item.detailText);
+              item.category == 'power' ||
+              item.category == 'screenshot') {
+            final key = notifications.containsKey(item.category) ? item.category : 'other';
+            if (notifications[key] ?? true) {
+              Notifier.show(item.title, item.detailText.isEmpty ? item.title : item.detailText);
+            }
           }
         }
         if (events.length > 5000) events = events.sublist(0, 5000);
@@ -195,6 +215,11 @@ class AppState extends ChangeNotifier {
         DiagLog.instance.add('session', 'server signalled pairing');
         unawaited(refreshDevice());
         break;
+      case 'unpaired':
+        DiagLog.instance.add('session', 'PC unpaired from the relay');
+        Notifier.show('Sentinel unpaired', 'This PC was unpaired. Pair again to continue.');
+        unawaited(handleServerUnpair());
+        break;
     }
     notifyListeners();
   }
@@ -208,9 +233,28 @@ class AppState extends ChangeNotifier {
       connected = device?.online ?? false;
       lastError = null;
     } catch (error) {
+      if (error is ApiError &&
+          (error.code == 'invalid_mobile_token' || error.code == 'unauthorized')) {
+        await handleServerUnpair();
+        return;
+      }
       relayOnline = false;
       lastError = describeError(error);
     }
+    notifyListeners();
+  }
+
+  Future<void> handleServerUnpair() async {
+    await store.clearSessions();
+    _teardownClient();
+    sessions = [];
+    session = null;
+    device = null;
+    events = [];
+    shots = [];
+    connected = false;
+    relayOnline = false;
+    locked = false;
     notifyListeners();
   }
 
@@ -444,6 +488,12 @@ class AppState extends ChangeNotifier {
   Map<String, String> get imageHeaders => {
         if (session != null) 'Authorization': 'Bearer ${session!.token}',
       };
+
+  Future<void> setNotificationEnabled(String key, bool value) async {
+    notifications[key] = value;
+    await store.setNotificationEnabled(key, value);
+    notifyListeners();
+  }
 
   Future<void> setBiometricEnabled(bool value) async {
     biometricEnabled = value;

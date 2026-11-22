@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="branding/logo-master.png" width="120" alt="Sentinel logo">
+<img src="Logo.jpg" width="120" alt="Sentinel logo">
 
 # Sentinel
 
@@ -14,7 +14,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
-[![Version](https://img.shields.io/badge/version-2.0.0-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2.1.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -260,7 +260,7 @@ password, relay address, pairing with a **QR code or 6-digit code** and device c
 uninstaller (no copy of the setup is left behind). The uninstaller defaults to wiping local data and
 unpairing the relay. Automatic update checks are optional and only read the public GitHub release metadata.
 
-See [docs/SIGNING.md](docs/SIGNING.md) for signing and the WhatAVibe publisher identity.
+See the installer section above; builds stay unsigned.
 
 The first launch shows the pairing window. Enter your relay URL (for example
 `http://192.168.1.20:8765` or `https://sentinel.example.com`), press **Connect**, and keep the window open
@@ -452,7 +452,7 @@ screen are always live.
 | Linked phones | Phone → Settings, or Agent → Settings → Linked phones |
 | Watch tile layout | Watch → Settings → Tile layout |
 | Relay behavior | `server/config.json` |
-| Branding | Replace `Logo.jpg`, then `python scripts/branding.py` |
+| Branding | Replace `Logo.jpg` in the repository root |
 
 Common relay keys:
 
@@ -485,7 +485,6 @@ Common relay keys:
 | Document | What's inside |
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Step-by-step install, tunnels, ADB direct link, pairing |
-| [docs/SIGNING.md](docs/SIGNING.md) | Code signing, the WhatAVibe publisher identity and key handling |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
@@ -499,13 +498,12 @@ Common relay keys:
 ```
 Sentinel/
 ├─ agent/      Windows agent — C# .NET 10 WPF, tray, monitoring, secure lock
-├─ mobile/     Flutter app — Android (primary), Windows for UI testing
+├─ mobile/     Flutter phone app — relay + direct ADB modes
 ├─ watch/      Wear OS app — Kotlin, Compose, Tiles
 ├─ flipper/    Flipper Zero app — C, BLE serial bridge (+ optional ESP32 sketch)
 ├─ server/     Flask relay — SQLite, REST + WebSocket, screenshots
-├─ docs/       Setup, security, architecture, API, screenshots
-├─ scripts/    branding.py, end-to-end test runner
-└─ branding/   logo sources
+├─ installer/  Windows setup wizard and uninstaller entry
+└─ docs/       Setup, security, architecture, API, screenshots
 ```
 
 ---
@@ -574,14 +572,11 @@ last-seen time.
 ## Development
 
 ```powershell
-# API contract (starts from an existing relay or spins one up in e2e.ps1)
+# API contract (run against a local relay)
 python server\tests\smoke.py http://127.0.0.1:8799
 
 # Agent self-test: TOTP vectors, capture, local API, ADB
 agent\Sentinel\bin\Release\net10.0-windows\Sentinel.exe --selftest out.json
-
-# Full loop: isolated relay on 8799, headless agent, pairing, screenshots, away mode
-powershell -ExecutionPolicy Bypass -File scripts\e2e.ps1
 
 # Phone unit tests
 cd mobile; flutter test
@@ -595,10 +590,11 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.5.0 | C# / .NET 10 WPF |
-| Relay server | 1.3.0 | Python / Flask / SQLite |
-| Phone app | 1.4.0 (build 13) | Flutter |
-| Wear OS app | 1.3.2 | Kotlin / Compose / Tiles / Complications |
+| Windows agent | 1.6.0 | C# / .NET 10 WPF |
+| Relay server | 1.3.1 | Python / Flask / SQLite |
+| Phone app | 1.5.0 (build 14) | Flutter |
+| Wear OS app | 1.3.3 | Kotlin / Compose / Tiles / Complications |
+| Desktop installer | 2.1.0 | WPF setup and agent uninstaller |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

@@ -101,6 +101,11 @@ class _TutorialDialogState extends State<_TutorialDialog> {
           onPressed: _finish,
           child: const Text('Skip', style: TextStyle(color: C.muted)),
         ),
+        if (_index > 0)
+          TextButton(
+            onPressed: () => setState(() => _index--),
+            child: const Text('Back'),
+          ),
         FilledButton(
           onPressed: () {
             if (last) {

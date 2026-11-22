@@ -34,6 +34,14 @@ public partial class TutorialWindow : Window
         StepCount.Text = $"{_index + 1} of {Steps.Length}";
         NextButton.Content = _index == Steps.Length - 1 ? "Done" : "Next";
         SkipButton.Visibility = _index == Steps.Length - 1 ? Visibility.Collapsed : Visibility.Visible;
+        BackStepButton.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Back_Click(object sender, RoutedEventArgs e)
+    {
+        if (_index == 0) return;
+        _index--;
+        ShowStep();
     }
 
     private void Skip_Click(object sender, RoutedEventArgs e) => Finish();

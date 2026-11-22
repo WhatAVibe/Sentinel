@@ -323,12 +323,37 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          const SectionHeader('Notifications'),
+          CardBox(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                _NotifyRow(state: state, category: 'security', title: 'Security events',
+                    subtitle: 'Locks, away mode, unlocks, pairing'),
+                const Divider(color: C.border, height: 1),
+                _NotifyRow(state: state, category: 'power', title: 'Power events',
+                    subtitle: 'Offline, back online, restarts'),
+                const Divider(color: C.border, height: 1),
+                _NotifyRow(state: state, category: 'message', title: 'Messages and replies',
+                    subtitle: 'Messages sent to the PC and replies from it'),
+                const Divider(color: C.border, height: 1),
+                _NotifyRow(state: state, category: 'screenshot', title: 'Screenshots',
+                    subtitle: 'A capture was uploaded to the relay'),
+                const Divider(color: C.border, height: 1),
+                _NotifyRow(state: state, category: 'clipboard', title: 'Clipboard events',
+                    subtitle: 'Clipboard activity while monitoring'),
+                const Divider(color: C.border, height: 1),
+                _NotifyRow(state: state, category: 'other', title: 'Everything else',
+                    subtitle: 'Windows, apps, USB and other activity'),
+              ],
+            ),
+          ),
           const SectionHeader('About'),
           CardBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.4.0'),
+                const _Line('App', 'Sentinel 1.5.0'),
                 _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'
@@ -468,8 +493,32 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _Line extends StatelessWidget {
-  final String label;
+class _NotifyRow extends StatelessWidget {
+  final AppState state;
+  final String category;
+  final String title;
+  final String subtitle;
+
+  const _NotifyRow({
+    required this.state,
+    required this.category,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      value: state.notifications[category] ?? true,
+      onChanged: (value) => state.setNotificationEnabled(category, value),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: C.muted)),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {  final String label;
   final String value;
 
   const _Line(this.label, this.value);

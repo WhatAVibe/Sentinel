@@ -128,4 +128,14 @@ class SessionStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('sentinel_tutorial_done', value);
   }
+
+  Future<bool> notificationEnabled(String category) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('notify_$category') ?? true;
+  }
+
+  Future<void> setNotificationEnabled(String category, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notify_$category', value);
+  }
 }

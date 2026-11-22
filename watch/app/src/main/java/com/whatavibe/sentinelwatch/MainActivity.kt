@@ -142,6 +142,11 @@ private fun WatchApp() {
                 session = it,
                 onCode = { screen = "code" },
                 onSettings = { screen = "settings" },
+                onSessionLost = {
+                    store.clear()
+                    session = null
+                    screen = "pair"
+                },
             )
         }
     }
@@ -229,7 +234,7 @@ private fun PairScreen(store: Store, onPaired: (Session) -> Unit) {
 }
 
 @Composable
-private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> Unit) {
+private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> Unit, onSessionLost: () -> Unit) {
     val api = remember(session) { Api(session.baseUrl, session.token) }
     var status by remember { mutableStateOf<DeviceStatus?>(null) }
     var message by remember { mutableStateOf("") }
@@ -240,6 +245,10 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
         try {
             status = withContext(Dispatchers.IO) { api.status(session.deviceId) }
         } catch (e: Exception) {
+            if (e is ApiException && e.status == 401) {
+                onSessionLost()
+                return
+            }
             message = friendlyError(e)
         }
     }
@@ -259,6 +268,10 @@ private fun HomeScreen(session: Session, onCode: () -> Unit, onSettings: () -> U
                 message = "Sent: $type"
                 refresh()
             } catch (e: Exception) {
+                if (e is ApiException && e.status == 401) {
+                    onSessionLost()
+                    return@launch
+                }
                 message = friendlyError(e)
             } finally {
                 busy = false
@@ -436,7 +449,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.3.2", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 1.3.3", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }
