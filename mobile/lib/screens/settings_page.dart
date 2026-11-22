@@ -10,6 +10,7 @@ import '../models.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'flipper_page.dart';
+import 'tutorial.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -298,6 +299,17 @@ class SettingsPage extends StatelessWidget {
                       style: TextStyle(fontSize: 11, color: C.muted)),
                   trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: C.muted),
                   onTap: () => _changePin(context),
+                ),
+                const Divider(color: C.border, height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.school_outlined, size: 18),
+                  title: const Text('Show tutorial',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Walk through the app again',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                  trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: C.muted),
+                  onTap: () => showSentinelTutorial(context, force: true),
                 ),
                 const Divider(color: C.border, height: 1),
                 ListTile(

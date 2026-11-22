@@ -23,8 +23,8 @@ welcome.
 |---|---|
 | Relay | `cd server && python -m pip install -r requirements.txt && python server.py` |
 | API smoke test | `python server/tests/smoke.py http://127.0.0.1:8799` |
-| Agent | `cd agent && dotnet build PCMonitor.Agent.sln -c Release` |
-| Agent self-test | `PCMonitor.Agent.exe --selftest out.json` |
+| Agent | `cd agent && dotnet build Sentinel.sln -c Release` |
+| Agent self-test | `Sentinel.exe --selftest out.json` |
 | Phone | `cd mobile && flutter pub get && flutter test` |
 | Watch | `cd watch && ./gradlew :app:assembleDebug` |
 | Full loop | `powershell -File scripts/e2e.ps1` |

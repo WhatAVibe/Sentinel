@@ -9,10 +9,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $tmp = Join-Path $env:TEMP "pcm-e2e"
-$cfgDir = Join-Path $env:LOCALAPPDATA 'PCMonitor'
-$agentExe = Join-Path $root 'agent\PCMonitor.Agent\bin\Debug\net10.0-windows\PCMonitor.Agent.exe'
+$cfgDir = Join-Path $env:LOCALAPPDATA 'Sentinel'
+$agentExe = Join-Path $root 'agent\Sentinel\bin\Debug\net10.0-windows\Sentinel.exe'
 
-Get-Process PCMonitor.Agent -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process Sentinel -ErrorAction SilentlyContinue | Stop-Process -Force
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 New-Item -ItemType Directory $tmp | Out-Null
 
@@ -27,7 +27,7 @@ $agent = $null
 $exit = 1
 try {
     if (-not $SkipBuild) {
-        & dotnet build (Join-Path $root 'agent\PCMonitor.Agent\PCMonitor.Agent.csproj') -c Debug | Out-Host
+        & dotnet build (Join-Path $root 'agent\Sentinel\Sentinel.csproj') -c Debug | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'agent build failed' }
     }
 
@@ -74,7 +74,7 @@ try {
 finally {
     if ($agent) { Stop-Process -Id $agent.Id -Force -ErrorAction SilentlyContinue }
     if ($server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
-    Get-Process PCMonitor.Agent -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process Sentinel -ErrorAction SilentlyContinue | Stop-Process -Force
     if ($backup) {
         Copy-Item $backup (Join-Path $cfgDir 'config.json') -Force
     } else {

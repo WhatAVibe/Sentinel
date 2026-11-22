@@ -30,15 +30,15 @@ def main() -> None:
     square.paste(source.crop((left, top, left + side, top + side)).resize((1024, 1024), Image.LANCZOS), (0, 0))
 
     (ROOT / "branding").mkdir(parents=True, exist_ok=True)
-    (ROOT / "agent" / "PCMonitor.Agent" / "Assets").mkdir(parents=True, exist_ok=True)
+    (ROOT / "agent" / "Sentinel" / "Assets").mkdir(parents=True, exist_ok=True)
     (ROOT / "mobile" / "assets").mkdir(parents=True, exist_ok=True)
 
     square.save(ROOT / "branding" / "logo-master.png")
-    square.resize((512, 512), Image.LANCZOS).save(ROOT / "agent" / "PCMonitor.Agent" / "Assets" / "logo.png")
+    square.resize((512, 512), Image.LANCZOS).save(ROOT / "agent" / "Sentinel" / "Assets" / "logo.png")
     square.resize((512, 512), Image.LANCZOS).save(ROOT / "mobile" / "assets" / "logo.png")
 
     ico = [(size, size) for size in SIZES]
-    square.save(ROOT / "agent" / "PCMonitor.Agent" / "app.ico", format="ICO", sizes=ico)
+    square.save(ROOT / "agent" / "Sentinel" / "app.ico", format="ICO", sizes=ico)
     square.save(ROOT / "mobile" / "windows" / "runner" / "resources" / "app_icon.ico", format="ICO", sizes=ico)
 
     densities = {

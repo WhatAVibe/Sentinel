@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from pcm_server import Config, create_app
+from sentinel_server import Config, create_app
 
 
 def main():

@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pcm_server.security import totp_now  # noqa: E402
+from sentinel_server.security import totp_now  # noqa: E402
 
 SESSION = json.loads(Path(sys.argv[1]).read_text())
 BASE = SESSION["server"]

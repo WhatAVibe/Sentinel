@@ -8,7 +8,7 @@
 | `server/` | Python 3, Flask, SQLite | Relay, pairing authority, TOTP verifier, storage. |
 | `mobile/` | Flutter 3.47 (Android/Windows) | Remote control, timeline, gallery, TOTP generator. |
 | `flipper/` | C, Flipper Zero SDK (FAP) | BLE keypad: sends commands to the phone and renders the state it returns. |
-| ADB (optional) | adb.exe | Direct phone↔PC transport via `adb reverse`. |
+| ADB (optional) | adb.exe | Direct phoneâ†”PC transport via `adb reverse`. |
 
 The agent and the phone never address each other directly over the internet. Both connect **outbound** to
 the relay, so the PC can sit behind NAT with no port forwarding. In direct mode the phone talks to the
@@ -18,18 +18,18 @@ agent's loopback API through the adb tunnel.
 
 ```
 Agent                         Server                          Phone
-  │ POST /pair/request           │                               │
-  ├─────────────────────────────▶│ creates device + tokens,      │
-  │                             │ stores code (TTL 10 min)       │
-  │ ◀── request_id, code ────────┤                               │
-  │ shows QR {v,u,r,c,n}         │                               │
-  │                             │ ◀── POST /pair/approve ────────┤ scans QR / types code
-  │                             │     {request_id, code}         │
-  │                             ├── mobile_token, totp_secret ───▶│
-  │ GET /pair/status (poll)      │                               │
-  ├─────────────────────────────▶│                               │
-  │ ◀── agent_token, totp ───────┤ (returned exactly once)        │
-  │ stores DPAPI-protected       │                               │
+  â”‚ POST /pair/request           â”‚                               â”‚
+  â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¶â”‚ creates device + tokens,      â”‚
+  â”‚                             â”‚ stores code (TTL 10 min)       â”‚
+  â”‚ â—€â”€â”€ request_id, code â”€â”€â”€â”€â”€â”€â”€â”€â”¤                               â”‚
+  â”‚ shows QR {v,u,r,c,n}         â”‚                               â”‚
+  â”‚                             â”‚ â—€â”€â”€ POST /pair/approve â”€â”€â”€â”€â”€â”€â”€â”€â”¤ scans QR / types code
+  â”‚                             â”‚     {request_id, code}         â”‚
+  â”‚                             â”œâ”€â”€ mobile_token, totp_secret â”€â”€â”€â–¶â”‚
+  â”‚ GET /pair/status (poll)      â”‚                               â”‚
+  â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¶â”‚                               â”‚
+  â”‚ â—€â”€â”€ agent_token, totp â”€â”€â”€â”€â”€â”€â”€â”¤ (returned exactly once)        â”‚
+  â”‚ stores DPAPI-protected       â”‚                               â”‚
 ```
 
 The phone can also pair with just the six-character code: `POST /pair/lookup` resolves the newest pending
@@ -39,7 +39,7 @@ touching the PC token.
 
 ## Command pipeline
 
-1. Phone → `POST /api/v1/devices/{id}/command` with `{type, args?, code?}`.
+1. Phone â†’ `POST /api/v1/devices/{id}/command` with `{type, args?, code?}`.
 2. Server validates the command type and, when required, the TOTP code. It inserts a `commands` row and
    pushes it to the agent's WebSocket if connected.
 3. Agent long-polls `GET /agent/commands?wait=25` when the socket is down. A long-poll returns as soon as a
@@ -49,7 +49,7 @@ touching the PC token.
 5. Pending commands expire after `command_ttl_seconds` (default 120). The agent also discards anything older
    than three minutes or created more than a minute before it started, and reports `expired`. This stops a
    command queued while the PC was asleep or shutting down from running after the next boot.
-6. Statuses: `pending → delivered → done|failed`, `timeout` after 90 s without a result, or `expired`. The
+6. Statuses: `pending â†’ delivered â†’ done|failed`, `timeout` after 90 s without a result, or `expired`. The
    phone receives `{type:"command"}` pushes and can also poll `/commands/{id}`.
 
 Commands that require a code: `unlock`, `away_disable`, and (optionally) `shutdown`/`restart` when the
@@ -81,7 +81,7 @@ capture to Away Mode; session events are always recorded.
 
 ## Messages
 
-Phone → `POST /devices/{id}/message` → server stores a `messages` row, queues a `message` command with
+Phone â†’ `POST /devices/{id}/message` â†’ server stores a `messages` row, queues a `message` command with
 `{message_id, title, text, kind, allow_reply}`, pushes ntfy. The agent shows a single styled popup
 (toast/dialog/alert/banner) in the bottom-right. If replies are allowed, the PC types an answer which the
 agent posts to `/agent/messages/{id}/reply`; the server stores it, emits a `message` event, pushes it to the
@@ -91,9 +91,9 @@ phone, and triggers a notification. Dismissals mark the message `dismissed`.
 
 `PowerActionMode` in the agent decides what a remote `shutdown`/`restart` does:
 
-- `silent` — execute immediately (`shutdown.exe /t 10`).
-- `notify` — show the alert popup with the templated message, then execute.
-- `confirm` — show a topmost Allow/Deny dialog with a 30 s auto-deny. Denial returns
+- `silent` â€” execute immediately (`shutdown.exe /t 10`).
+- `notify` â€” show the alert popup with the templated message, then execute.
+- `confirm` â€” show a topmost Allow/Deny dialog with a 30 s auto-deny. Denial returns
   `declined_by_user` to the phone and logs a security event.
 
 `PowerActionMessage` supports `{action}` (e.g. "shut down"). The server mirrors these in device settings so
@@ -140,10 +140,10 @@ Alerts arrive as normal events, so the phone's local notifications and ntfy both
 
 Closing the agent is a security-relevant action, so it is gated even when away mode is off:
 
-- Tray → Exit asks for the TOTP code (the phone code or any authenticator) before shutting down.
-- Settings → Unpair this PC also asks for the code.
+- Tray â†’ Exit asks for the TOTP code (the phone code or any authenticator) before shutting down.
+- Settings â†’ Unpair this PC also asks for the code.
 - The phone can send `agent_exit` with a code; the server and agent both verify it.
-- On startup the agent spawns a detached supervisor (`PCMonitor.Agent.exe --supervise`) through the shell, so
+- On startup the agent spawns a detached supervisor (`Sentinel.exe --supervise`) through the shell, so
   it is not a child of the agent and Task Manager's *End task* does not take it down. If the agent disappears
   without a DPAPI-signed `authorized-exit` marker (30 s validity), the supervisor relaunches it with `--tray`.
   A valid exit writes the marker, which the supervisor consumes before it exits.
@@ -167,8 +167,8 @@ upload immediately and land in the phone gallery.
 into a 32-bit top-down DIB, builds a `BitmapSource`, and encodes PNG. No GDI+ bitmap is used, and the
 process is PerMonitorV2 DPI-aware, so multi-monitor captures are pixel-correct.
 
-Flow: capture all monitors → save to `%LOCALAPPDATA%\PCMonitor\shots` → show locally → upload each to
-`POST /agent/screenshots` (multipart) → server stores `storage/shots/<device>/<id>.png` → pushes metadata
+Flow: capture all monitors â†’ save to `%LOCALAPPDATA%\Sentinel\shots` â†’ show locally â†’ upload each to
+`POST /agent/screenshots` (multipart) â†’ server stores `storage/shots/<device>/<id>.png` â†’ pushes metadata
 to phones. Phones fetch bytes with their bearer token (or `?token=`). Away mode captures on an interval
 (default 120 s).
 
@@ -176,12 +176,12 @@ to phones. Phones fetch bytes with their bearer token (or `?token=`). Away mode 
 
 ```
 idle/phone-left/manual/phone command
-        │
-        ▼
+        â”‚
+        â–¼
  EnableAway: screensaver starts, monitoring on, away flag, optional lock timer, periodic captures
-        │
-        ▼
- Disarm (code + optional ADB presence) → verify TOTP locally → stop captures, wake display, monitoring off
+        â”‚
+        â–¼
+ Disarm (code + optional ADB presence) â†’ verify TOTP locally â†’ stop captures, wake display, monitoring off
 ```
 
 The flag is persisted to the server (`away`) on every heartbeat and immediately via `/agent/state`.
@@ -199,14 +199,14 @@ Away Mode automatically.
 ## Storage
 
 ```
-%LOCALAPPDATA%\PCMonitor\
-├─ config.json        non-secret settings
-├─ shots\             local captures (PNG)
-└─ logs\agent-*.log   JSONL, 10-day rotation
+%LOCALAPPDATA%\Sentinel\
+â”œâ”€ config.json        non-secret settings
+â”œâ”€ shots\             local captures (PNG)
+â””â”€ logs\agent-*.log   JSONL, 10-day rotation
 
 <server>/storage/
-├─ sentinel.db        SQLite (WAL)
-└─ shots\<device>\    uploaded captures
+â”œâ”€ sentinel.db        SQLite (WAL)
+â””â”€ shots\<device>\    uploaded captures
 ```
 
 SQLite tables: `devices`, `mobiles`, `pair_requests`, `commands`, `events`, `screenshots`, `audit`.
@@ -252,9 +252,9 @@ Flipper                      Phone app                       Relay / Agent
 
 ## Configuration
 
-**Server** — `server/config.json` (auto-created).
+**Server** â€” `server/config.json` (auto-created).
 
-**Agent** — Settings tab, stored in `config.json`:
+**Agent** â€” Settings tab, stored in `config.json`:
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -275,9 +275,9 @@ Flipper                      Phone app                       Relay / Agent
 | `ProtectPowerCommands` | false | Require a code for shutdown/restart |
 | `AllowInsecureTls` | false | Accept self-signed HTTPS |
 | `AdbEnabled`, `AdbPath`, `LocalPort` | false, auto, 8790 | Direct link |
-| `StartWithWindows`, `MinimizeToTray`, `BalloonNotifications` | — | Tray behaviour |
+| `StartWithWindows`, `MinimizeToTray`, `BalloonNotifications` | â€” | Tray behaviour |
 
 ## Versioning
 
-Agent 1.3.2 · server 1.2.5 · app 1.3.0 · watch 1.3.2, flipper 1.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 1.3.2 Â· server 1.2.5 Â· app 1.3.0 Â· watch 1.3.2, flipper 1.1 Â· relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.

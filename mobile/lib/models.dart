@@ -394,6 +394,8 @@ const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
 /// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
 String sentinelDeviceName = '';
 
+const sentinelAppVersion = '1.4.0';
+
 Future<void> loadDeviceName() async {
   try {
     final name = await _deviceChannel.invokeMethod<String>('name');

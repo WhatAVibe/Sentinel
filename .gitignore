@@ -29,3 +29,10 @@ watch/local.properties
 flipper/dist/debug/
 flipper/.pio/
 flipper/esp32/.pio/
+
+installer/payload.zip
+installer/Sentinel.Installer/payload.zip
+installer/out/
+mobile/android/key.properties
+mobile/android/*.jks
+mobile/android/*.keystore

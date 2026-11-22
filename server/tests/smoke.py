@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pcm_server.security import totp_now  # noqa: E402
+from sentinel_server.security import totp_now  # noqa: E402
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8799"
 FAILS = []

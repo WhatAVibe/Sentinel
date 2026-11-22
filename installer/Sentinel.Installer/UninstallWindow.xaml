@@ -1,0 +1,25 @@
+<Window x:Class="Sentinel.Installer.UninstallWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Uninstall Sentinel" Height="430" Width="560" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource Bg}" FontFamily="Segoe UI">
+    <StackPanel Margin="28">
+        <TextBlock Text="Uninstall Sentinel" FontSize="22" FontWeight="SemiBold" />
+        <TextBlock x:Name="PathText" Foreground="{StaticResource Muted}"
+                   FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+        <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                CornerRadius="12" Padding="16" Margin="0,18,0,0">
+            <StackPanel>
+                <CheckBox x:Name="WipeCheck" Content="Delete all data (config, logs, screenshots)" IsChecked="True" />
+                <CheckBox x:Name="UnpairCheck" Content="Unpair this PC from the relay and delete its data" IsChecked="True" />
+                <TextBlock Text="Wiping data removes the pairing, TOTP secret, recovery password, logs and local screenshots. The relay copy is only deleted when unpair is checked."
+                           Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
+            </StackPanel>
+        </Border>
+        <TextBlock x:Name="StatusText" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,14,0,0" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button Content="Cancel" Style="{StaticResource Ghost}" Margin="0,0,8,0" Click="Cancel_Click" />
+            <Button x:Name="UninstallButton" Content="Uninstall" Style="{StaticResource DangerButton}" Click="Uninstall_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -1,0 +1,39 @@
+<Window x:Class="Sentinel.Views.TutorialWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome to Sentinel" Height="470" Width="640" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource Bg}" FontFamily="Segoe UI"
+        ShowInTaskbar="False">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Welcome to Sentinel" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="StepCount" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
+                BorderThickness="1" CornerRadius="14" Padding="22" Margin="0,18,0,0">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock x:Name="BodyText" Style="{StaticResource MutedText}" Margin="0,12,0,0"
+                           TextWrapping="Wrap" LineHeight="21" FontSize="13" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <TextBlock Text="You can replay this from Settings." Style="{StaticResource MutedText}"
+                       VerticalAlignment="Center" FontSize="11" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SkipButton" Content="Skip" Style="{StaticResource GhostButton}"
+                        Padding="16,8" Margin="0,0,8,0" Click="Skip_Click" />
+                <Button x:Name="NextButton" Content="Next" Style="{StaticResource PrimaryButton}"
+                        Padding="20,8" Click="Next_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

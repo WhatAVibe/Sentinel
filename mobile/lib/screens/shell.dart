@@ -11,6 +11,7 @@ import 'home_page.dart';
 import 'pair_screen.dart';
 import 'security_page.dart';
 import 'settings_page.dart';
+import 'tutorial.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -21,6 +22,14 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showSentinelTutorial(context);
+    });
+  }
 
   static const _titles = ['Dashboard', 'Activity', 'Screenshots', 'Security'];
 

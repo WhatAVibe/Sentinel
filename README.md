@@ -4,9 +4,9 @@
 
 # Sentinel
 
-**Self-hosted remote control and monitoring for your own Windows PC — from your phone or wrist.**
+**Self-hosted remote control and monitoring for your own Windows PC â€” from your phone or wrist.**
 
-Lock it, watch it, message it, and get it back — without a cloud account.
+Lock it, watch it, message it, and get it back â€” without a cloud account.
 
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Wear%20OS%20%7C%20Flipper-6C8CFF?style=flat-square)](#requirements)
 [![Agent](https://img.shields.io/badge/agent-.NET%2010-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#1-windows-agent)
@@ -17,14 +17,14 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Version](https://img.shields.io/badge/version-2.0.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-[Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
+[Quick start](#quick-start) Â· [Screenshots](#screenshots) Â· [Security](#security-model) Â· [Customization](#customization) Â· [Docs](#documentation) Â· [Troubleshooting](#troubleshooting)
 
 </div>
 
 > [!IMPORTANT]
 > **Sentinel is remote-administration software for devices you own.** Install it only on your own PC and
 > phones. It has no stealth mode: the tray icon, dashboard, logs and settings are always visible. Monitoring
-> another person without their knowledge is illegal in most places — don't.
+> another person without their knowledge is illegal in most places â€” don't.
 
 ---
 
@@ -55,8 +55,8 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
     <td width="50%"><img src="docs/images/mobile-2fa.jpg" alt="Phone security tab with 2FA code and secure lock"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Live dashboard</b> — CPU/RAM, session, quick actions</sub></td>
-    <td align="center"><sub><b>Security tab</b> — live TOTP, secure lock, policy</sub></td>
+    <td align="center"><sub><b>Live dashboard</b> â€” CPU/RAM, session, quick actions</sub></td>
+    <td align="center"><sub><b>Security tab</b> â€” live TOTP, secure lock, policy</sub></td>
   </tr>
 </table>
 
@@ -68,8 +68,8 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
     <td width="40%"><img src="docs/images/secure-lock.png" alt="Sentinel secure lock overlay"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Agent dashboard</b> — status, actions, activity feed</sub></td>
-    <td align="center"><sub><b>Secure lock</b> — 2FA overlay on every monitor</sub></td>
+    <td align="center"><sub><b>Agent dashboard</b> â€” status, actions, activity feed</sub></td>
+    <td align="center"><sub><b>Secure lock</b> â€” 2FA overlay on every monitor</sub></td>
   </tr>
 </table>
 
@@ -81,8 +81,8 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
     <td width="50%"><img src="docs/images/watch-tile.jpg" alt="Sentinel tile with 2FA code and action buttons"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Watch app</b> — one-tap lock, secure lock, away</sub></td>
-    <td align="center"><sub><b>All-in-one tile</b> — status, code, buttons</sub></td>
+    <td align="center"><sub><b>Watch app</b> â€” one-tap lock, secure lock, away</sub></td>
+    <td align="center"><sub><b>All-in-one tile</b> â€” status, code, buttons</sub></td>
   </tr>
 </table>
 
@@ -108,9 +108,9 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
     <td width="33%"><img src="docs/images/Flipper2FA.jpg" alt="2FA panel: large code, progress bar and seconds remaining"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Menu</b> — transport and actions</sub></td>
-    <td align="center"><sub><b>Status</b> — name, state, code</sub></td>
-    <td align="center"><sub><b>2FA</b> — code, bar, seconds</sub></td>
+    <td align="center"><sub><b>Menu</b> â€” transport and actions</sub></td>
+    <td align="center"><sub><b>Status</b> â€” name, state, code</sub></td>
+    <td align="center"><sub><b>2FA</b> â€” code, bar, seconds</sub></td>
   </tr>
 </table>
 
@@ -239,11 +239,28 @@ Open `http://<server>:8765/` for a status page. The API lives at `/api/v1`.
 
 ```powershell
 cd agent
-dotnet build PCMonitor.Agent.sln -c Release
-.\PCMonitor.Agent\bin\Release\net10.0-windows\PCMonitor.Agent.exe
+dotnet build Sentinel.sln -c Release
+.\Sentinel\bin\Release\net10.0-windows\Sentinel.exe
 ```
 
-Or open `PCMonitor.Agent.sln` in Visual Studio and build **Release | x64**.
+Or open `Sentinel.sln` in Visual Studio and build **Release | x64**.
+
+### Installer
+
+The Windows installer bundles the self-contained agent, so a fresh machine needs nothing preinstalled:
+
+```powershell
+.\installer\build.ps1
+# installer\out\Sentinel Setup.exe
+```
+
+It performs the first-run wizard (terms and privacy, install location under `%APPDATA%\Sentinel`, recovery
+password, relay address, pairing and device confirmation), supports **Update / Repair** when an install is
+detected, and registers an uninstaller that can wipe local data and unpair from the relay. The setup binary
+is copied into the install folder for uninstall only; the startup entry launches `Sentinel.exe`, never the
+installer. Automatic update checks are optional and only read the public GitHub release metadata.
+
+See [docs/SIGNING.md](docs/SIGNING.md) for signing and the WhatAVibe publisher identity.
 
 The first launch shows the pairing window. Enter your relay URL (for example
 `http://192.168.1.20:8765` or `https://sentinel.example.com`), press **Connect**, and keep the window open
@@ -254,7 +271,7 @@ Useful flags:
 | Flag | Purpose |
 |---|---|
 | `--tray` | Start hidden in the notification area (used by autostart) |
-| `--supervise` | Detached supervisor — started automatically by the agent |
+| `--supervise` | Detached supervisor â€” started automatically by the agent |
 | `--selftest out.json` | TOTP, capture, local API and ADB checks |
 
 ### 3. Phone app
@@ -272,10 +289,10 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 ### 4. Pair the phone
 
 1. PC: the pairing window shows a QR code and a 6-character code.
-2. Phone: **Scan QR**, or **Code** → enter the relay URL and the code.
+2. Phone: **Scan QR**, or **Code** â†’ enter the relay URL and the code.
 3. Approve on the PC. Both sides store tokens and share the TOTP secret.
-4. More phones later: PC → **Settings → Pair another phone**.
-5. More PCs later: tap the PC name at the top of the phone app → **Pair another PC**. Use the pencil icon
+4. More phones later: PC â†’ **Settings â†’ Pair another phone**.
+5. More PCs later: tap the PC name at the top of the phone app â†’ **Pair another PC**. Use the pencil icon
    to give each one a local name.
 
 ### 5. Wear OS app (optional)
@@ -304,24 +321,24 @@ ufbt launch     # install and start over USB
 
 Or grab `Sentinel-Flipper-1.1.0.fap` from the release and copy it to `/ext/apps/GPIO/`.
 
-On the Flipper: **Applications → GPIO → Sentinel Bridge**, leave it on **Link: Bluetooth**. On the phone:
-**Settings → Flipper → Set up → Scan for Flipper**, pick it, and accept the pairing prompt (type the PIN
+On the Flipper: **Applications â†’ GPIO â†’ Sentinel Bridge**, leave it on **Link: Bluetooth**. On the phone:
+**Settings â†’ Flipper â†’ Set up â†’ Scan for Flipper**, pick it, and accept the pairing prompt (type the PIN
 shown on the Flipper if asked). The status screen then shows the PC name, the 2FA code and its countdown.
 
-Close qFlipper while the bridge is in use — it owns the same BLE serial profile. Full protocol, the
+Close qFlipper while the bridge is in use â€” it owns the same BLE serial profile. Full protocol, the
 optional ESP32 WiFi board and troubleshooting: [flipper/README.md](flipper/README.md).
 
 ---
 
 ## Security model
 
-Sentinel is designed to protect a PC against **casual access** while you're away — roommates, coworkers,
+Sentinel is designed to protect a PC against **casual access** while you're away â€” roommates, coworkers,
 an unlocked machine in an office. It is not a defence against a local administrator, malware already on the
 PC, or someone with physical access to the disk.
 
 ### 2FA (TOTP)
 
-- RFC 6238, SHA-1, 6 digits, 30-second step, ±1 step window.
+- RFC 6238, SHA-1, 6 digits, 30-second step, Â±1 step window.
 - The code comes from the app's **Security** tab, any authenticator app, or the watch.
 - Verified **twice**: the relay rejects bad codes, and the agent checks the same code itself before
   disarming. A compromised relay cannot unlock the PC alone.
@@ -338,14 +355,14 @@ and takes over input:
   <kbd>Win</kbd>, <kbd>Alt</kbd>+<kbd>Tab</kbd>, <kbd>Alt</kbd>+<kbd>F4</kbd>, <kbd>Ctrl</kbd>+<kbd>Esc</kbd>
   and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Esc</kbd> are blocked.
 - Unlock with the code on the PC, or from the phone/watch.
-- **Ctrl+Alt+Del cannot be blocked** by any user-mode app — that's the Windows secure attention sequence.
+- **Ctrl+Alt+Del cannot be blocked** by any user-mode app â€” that's the Windows secure attention sequence.
   The lock comes back when you return.
 - The lock state survives a supervisor relaunch; an authorized exit clears it.
 
 ### Kill protection
 
 The agent starts a **detached supervisor** (`--supervise`) in its own process tree. If the agent disappears
-without a DPAPI-signed authorized-exit marker, the supervisor relaunches it. Windows **Task Manager → End
+without a DPAPI-signed authorized-exit marker, the supervisor relaunches it. Windows **Task Manager â†’ End
 task** on the agent no longer disables Sentinel.
 
 Limits: a local administrator can kill both processes. This is deterrence, not a kernel-level kiosk.
@@ -368,7 +385,7 @@ stores it.
 
 ## Monitoring & privacy
 
-Away mode can record (each toggle is opt-in/configurable in **Settings → Activity capture**):
+Away mode can record (each toggle is opt-in/configurable in **Settings â†’ Activity capture**):
 
 - Windows opened, app switches and focus changes
 - Clipboard text previews
@@ -377,7 +394,7 @@ Away mode can record (each toggle is opt-in/configurable in **Settings → Activ
 - Mouse clicks and movement
 - Outbound network connections
 - Browser searches inferred from window titles
-- **Keystrokes** — off by default, and only recorded while monitoring is active
+- **Keystrokes** â€” off by default, and only recorded while monitoring is active
 
 Screenshots are stored on **your** relay under `storage/shots`. Set `retention_days` (default 30) to keep it
 small, and treat the relay's storage as sensitive. There is no cloud upload.
@@ -390,7 +407,7 @@ Set `retention_days` to `0` if you want the relay to keep everything.
 
 ## Wear OS tiles
 
-Add them from the watch's tile carousel (**Add tiles → Sentinel**):
+Add them from the watch's tile carousel (**Add tiles â†’ Sentinel**):
 
 | Tile | Content | Buttons |
 |---|---|---|
@@ -399,7 +416,7 @@ Add them from the watch's tile carousel (**Add tiles → Sentinel**):
 | **Sentinel actions** | quick actions only | your choice (Lock, Unlock, Away, Secure, Shot, Ring, **Copy** code to the PC) |
 | **Sentinel code** | big code + countdown | - |
 
-**Settings → Tile layout** on the watch picks which rows and buttons appear. Tiles refresh on a 30-second
+**Settings â†’ Tile layout** on the watch picks which rows and buttons appear. Tiles refresh on a 30-second
 interval requested from the launcher; open the app for a guaranteed live code.
 
 ### Wear OS complications
@@ -423,13 +440,13 @@ screen are always live.
 
 | What | Where |
 |---|---|
-| Secure-lock wallpaper and lock message | Agent → Settings → Secure lock |
-| Activity capture toggles | Agent → Settings → Activity capture |
-| Away timings (lock delay, screenshot interval, idle auto-arm) | Agent → Settings → Away mode |
-| Power action behavior (silent / notify / confirm + message) | Agent → Settings → Power actions |
-| Start with Windows (agent + supervisor) | Agent → Settings |
-| Linked phones | Phone → Settings, or Agent → Settings → Linked phones |
-| Watch tile layout | Watch → Settings → Tile layout |
+| Secure-lock wallpaper and lock message | Agent â†’ Settings â†’ Secure lock |
+| Activity capture toggles | Agent â†’ Settings â†’ Activity capture |
+| Away timings (lock delay, screenshot interval, idle auto-arm) | Agent â†’ Settings â†’ Away mode |
+| Power action behavior (silent / notify / confirm + message) | Agent â†’ Settings â†’ Power actions |
+| Start with Windows (agent + supervisor) | Agent â†’ Settings |
+| Linked phones | Phone â†’ Settings, or Agent â†’ Settings â†’ Linked phones |
+| Watch tile layout | Watch â†’ Settings â†’ Tile layout |
 | Relay behavior | `server/config.json` |
 | Branding | Replace `Logo.jpg`, then `python scripts/branding.py` |
 
@@ -453,8 +470,8 @@ Common relay keys:
 - Turn on **Start with Windows** so both the agent and its supervisor come back after a reboot.
 - Set power actions to **Confirm** if an accidental shutdown would ruin your day.
 - Test the TOTP code before you rely on it: phone and PC clocks must agree.
-- Keep 3–4 action buttons on the watch dashboard; fewer tiles means better battery.
-- Update the agent with **Tray → Exit** (needs the code) before replacing the binary, otherwise the
+- Keep 3â€“4 action buttons on the watch dashboard; fewer tiles means better battery.
+- Update the agent with **Tray â†’ Exit** (needs the code) before replacing the binary, otherwise the
   supervisor restarts the old build.
 
 ---
@@ -464,6 +481,7 @@ Common relay keys:
 | Document | What's inside |
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Step-by-step install, tunnels, ADB direct link, pairing |
+| [docs/SIGNING.md](docs/SIGNING.md) | Code signing, the WhatAVibe publisher identity and key handling |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
@@ -476,14 +494,14 @@ Common relay keys:
 
 ```
 Sentinel/
-├─ agent/      Windows agent — C# .NET 10 WPF, tray, monitoring, secure lock
-├─ mobile/     Flutter app — Android (primary), Windows for UI testing
-├─ watch/      Wear OS app — Kotlin, Compose, Tiles
-├─ flipper/    Flipper Zero app — C, BLE serial bridge (+ optional ESP32 sketch)
-├─ server/     Flask relay — SQLite, REST + WebSocket, screenshots
-├─ docs/       Setup, security, architecture, API, screenshots
-├─ scripts/    branding.py, end-to-end test runner
-└─ branding/   logo sources
+â”œâ”€ agent/      Windows agent â€” C# .NET 10 WPF, tray, monitoring, secure lock
+â”œâ”€ mobile/     Flutter app â€” Android (primary), Windows for UI testing
+â”œâ”€ watch/      Wear OS app â€” Kotlin, Compose, Tiles
+â”œâ”€ flipper/    Flipper Zero app â€” C, BLE serial bridge (+ optional ESP32 sketch)
+â”œâ”€ server/     Flask relay â€” SQLite, REST + WebSocket, screenshots
+â”œâ”€ docs/       Setup, security, architecture, API, screenshots
+â”œâ”€ scripts/    branding.py, end-to-end test runner
+â””â”€ branding/   logo sources
 ```
 
 ---
@@ -504,7 +522,7 @@ Sentinel/
 | Screenshots are black | Display off, UAC/secure desktop, or protected content. Wake the display first. |
 | `flutter` rejects the path | Paths containing `!` are unsupported; use `mobile/flutter.ps1` or move the repo. |
 | Watch tile is blank | Install watch 1.2.0+ (older builds lacked the tile resource override) and re-add the tile. |
-| Can't exit the agent | Exit needs the TOTP code. Use Tray → Exit or the phone's "Quit PC agent". |
+| Can't exit the agent | Exit needs the TOTP code. Use Tray â†’ Exit or the phone's "Quit PC agent". |
 | Agent restarts after End task | That's the supervisor. Exit with authorization to stop both. |
 
 ---
@@ -534,16 +552,16 @@ Events and screenshots are stored server-side, so the PC can be off while you br
 the newest page and pulls older pages on demand; `retention_days` controls how long the relay keeps them.
 
 **Can I control several PCs from one phone?**
-Yes. Tap the PC name in the app bar → **Pair another PC**. Each PC keeps its own token and TOTP secret on the
+Yes. Tap the PC name in the app bar â†’ **Pair another PC**. Each PC keeps its own token and TOTP secret on the
 phone. Switch between them from the same sheet, and set a local name with the pencil icon. Unpairing removes
 only that phone from that PC; other PCs stay linked.
 
 **What does "ADB presence" mean?**
-It is a direct ADB link (USB or wireless debugging) between this phone and the PC — not relay pairing. It is
-only needed when the PC policy requires a trusted phone to disarm. Security → **How to link** shows the steps.
+It is a direct ADB link (USB or wireless debugging) between this phone and the PC â€” not relay pairing. It is
+only needed when the PC policy requires a trusted phone to disarm. Security â†’ **How to link** shows the steps.
 
 **Why does the app show RELAY while the PC is offline?**
-They describe different things. The header pill is the app ↔ relay connection; the device card is the
+They describe different things. The header pill is the app â†” relay connection; the device card is the
 PC. A PC that is asleep or off still leaves the relay reachable, and the card says PC OFFLINE with its
 last-seen time.
 
@@ -556,7 +574,7 @@ last-seen time.
 python server\tests\smoke.py http://127.0.0.1:8799
 
 # Agent self-test: TOTP vectors, capture, local API, ADB
-agent\PCMonitor.Agent\bin\Release\net10.0-windows\PCMonitor.Agent.exe --selftest out.json
+agent\Sentinel\bin\Release\net10.0-windows\Sentinel.exe --selftest out.json
 
 # Full loop: isolated relay on 8799, headless agent, pairing, screenshots, away mode
 powershell -ExecutionPolicy Bypass -File scripts\e2e.ps1
@@ -565,7 +583,7 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e.ps1
 cd mobile; flutter test
 ```
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome â€” see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -586,7 +604,7 @@ Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pu
 
 ## License
 
-[MIT](LICENSE) © WhatAVibe
+[MIT](LICENSE) Â© WhatAVibe
 
 Sentinel is provided as-is, with no warranty. You are responsible for how you deploy it. Use it only on
 devices you own or administer with explicit permission, and follow the monitoring laws where you live.

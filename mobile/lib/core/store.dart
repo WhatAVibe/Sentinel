@@ -118,4 +118,14 @@ class SessionStore {
   }
 
   Future<void> clearPin() => _secure.delete(key: _pinKey);
+
+  Future<bool> tutorialDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('sentinel_tutorial_done') ?? false;
+  }
+
+  Future<void> setTutorialDone(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('sentinel_tutorial_done', value);
+  }
 }

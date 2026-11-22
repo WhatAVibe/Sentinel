@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.pcmonitor.sentinelwatch"
+    namespace = "com.whatavibe.sentinelwatch"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.pcmonitor.sentinelwatch"
+        applicationId = "com.whatavibe.sentinelwatch"
         minSdk = 30
         targetSdk = 36
         versionCode = 7
