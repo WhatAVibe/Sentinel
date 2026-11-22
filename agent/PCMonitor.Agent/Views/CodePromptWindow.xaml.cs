@@ -25,6 +25,9 @@ public partial class CodePromptWindow : Window
         };
         Loaded += (_, _) => _timer.Start();
         Closed += (_, _) => _timer.Stop();
+        KeyButton.Visibility = SecurityKey.Current(App.Host.Config) == null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     public string Code => CodeBox.Text.Trim().Replace(" ", "");
@@ -57,6 +60,32 @@ public partial class CodePromptWindow : Window
     {
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
+    }
+
+    private async void Key_Click(object sender, RoutedEventArgs e)
+    {
+        KeyButton.IsEnabled = false;
+        ErrorText.Text = "Touch your security key…";
+        ErrorText.Foreground = (System.Windows.Media.Brush)FindResource("Muted");
+        ErrorText.Visibility = Visibility.Visible;
+        var (ok, error) = await SecurityKey.VerifyAsync(_host);
+        KeyButton.IsEnabled = true;
+        ErrorText.Foreground = (System.Windows.Media.Brush)FindResource("Danger");
+        if (!ok)
+        {
+            ShowError(error == "cancelled"
+                ? "Key touch cancelled. Try again."
+                : $"Security key check failed ({error}).");
+            return;
+        }
+        if (_host.Config.RequirePhonePresence && !_host.Adb.TrustedPresent)
+        {
+            ShowError("Phone presence is required. Connect your phone over ADB first.");
+            return;
+        }
+        ErrorText.Visibility = Visibility.Collapsed;
+        DialogResult = true;
+        Close();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

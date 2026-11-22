@@ -294,6 +294,25 @@
                         <Button Grid.Column="2" Content="Copy" Style="{StaticResource GhostButton}" Padding="12,7"
                                 Margin="8,0,0,0" Click="CopySecret_Click" />
                     </Grid>
+                    <Border Style="{StaticResource Divider}" />
+                    <TextBlock Text="Physical security key (FIDO2)" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="Link a YubiKey, a Flipper Zero with FIDO, or any FIDO2 key. Local unlocks can then take a key touch instead of a typed code."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#0E1218" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                CornerRadius="8" Padding="10,7">
+                            <TextBlock x:Name="SecurityKeyText" FontSize="12" TextTrimming="CharacterEllipsis" />
+                        </Border>
+                        <Button Grid.Column="1" Content="Link key" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="LinkKey_Click" />
+                        <Button Grid.Column="2" Content="Remove" Style="{StaticResource DangerButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="RemoveKey_Click" />
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -316,8 +335,9 @@
                         <Button Content="Test alarm" Style="{StaticResource GhostButton}" Padding="12,7"
                                 Margin="8,0,0,0" Click="TestAlarm_Click" />
                     </StackPanel>
-                    <TextBlock Text="Sentinel agent 1.2.5 · protocol v1.1" Style="{StaticResource MutedText}"
+                    <TextBlock x:Name="AgentVersionText" Style="{StaticResource MutedText}"
                                Margin="0,12,0,0" />
+                    <TextBlock x:Name="RelayVersionText" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                 </StackPanel>
             </Border>
         </StackPanel>

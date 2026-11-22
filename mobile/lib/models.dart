@@ -422,6 +422,11 @@ class ApiError implements Exception {  final int status;
         return 'The PC requires an ADB presence link — enable Direct link and connect this phone.';
       case 'capture_busy':
         return 'A capture is already running.';
+      case 'unsupported_command':
+        return 'Update the PC agent to use this feature.';
+      case 'clipboard_failed':
+      case 'missing_text':
+        return 'The PC could not replace its clipboard.';
       case 'rate_limited':
         return 'Slow down and try again.';
       default:

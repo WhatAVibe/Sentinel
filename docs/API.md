@@ -66,12 +66,15 @@ Pairing status transitions: `pending → approved → claimed` (agent fetched it
 
 `lock, unlock, away_enable, away_disable, screenshot, shutdown, restart, sleep, hibernate, logoff,
 screen_off, screen_on, message, media, info, cancel_shutdown, alarm, agent_exit, lock_screen, unlock_screen`
+`clipboard` also accepted (args `{text}`).
 
 Code required: `unlock`, `away_disable`, `agent_exit`, `unlock_screen`; `shutdown`/`restart` when device
 `settings.protect_power` is true.
 
-`lock_screen` args: `{message}` — covers every display with the wallpaper and blocks input.
+`lock_screen` args: `{message}` - covers every display with the wallpaper and blocks input.
 `unlock_screen` requires the TOTP code.
+`clipboard` args: `{text}` - replaces the PC clipboard (max 20,000 chars). Used by the phone's copy button
+and the watch's Copy action.
 
 `message` kinds: `toast | dialog | alert | banner | fullscreen`.
 `shutdown`/`restart` follow the PC's `power_mode`: `silent`, `notify`, or `confirm` (denial returns

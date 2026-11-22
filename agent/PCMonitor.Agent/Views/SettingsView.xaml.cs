@@ -33,6 +33,7 @@ public partial class SettingsView : UserControl
         RefreshLiveStatus();
         _statusTimer.Start();
         _ = LoadPhonesAsync();
+        _ = RefreshRelayVersionAsync();
     }
 
     private void LoadFromConfig()
@@ -75,6 +76,12 @@ public partial class SettingsView : UserControl
         PresenceCheck.IsChecked = cfg.RequirePhonePresence;
         ProtectPowerCheck.IsChecked = cfg.ProtectPowerCommands;
         InsecureCheck.IsChecked = cfg.AllowInsecureTls;
+
+        var link = SecurityKey.Current(cfg);
+        SecurityKeyText.Text = link == null
+            ? (SecurityKey.Available ? "No key linked" : "This Windows build has no WebAuthn API")
+            : $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
+        AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version} · protocol {AgentInfo.Protocol}";
 
         StartupCheck.IsChecked = StartupManager.IsEnabled();
         TrayCheck.IsChecked = cfg.MinimizeToTray;
@@ -354,6 +361,8 @@ public partial class SettingsView : UserControl
         Apply(c => c.DeviceName = name);
         UiState.I.DeviceName = name;
         App.Tray.Update();
+        App.Host.PublishName();
+        ServerStatus.Text = $"Renamed to {name}. Phones see it on the next refresh.";
     }
 
     private void BrowseAdb_Click(object sender, RoutedEventArgs e)
@@ -429,8 +438,64 @@ public partial class SettingsView : UserControl
         }
     }
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.Root);
+    private async Task RefreshRelayVersionAsync()
+    {
+        var cfg = App.Host.Config;
+        if (string.IsNullOrWhiteSpace(cfg.ServerUrl))
+        {
+            RelayVersionText.Text = "Relay: not configured";
+            return;
+        }
+        RelayVersionText.Text = "Relay: checking…";
+        try
+        {
+            var health = await ApiClient.PingAsync(cfg.ServerUrl, cfg.AllowInsecureTls, CancellationToken.None);
+            RelayVersionText.Text = health == null
+                ? "Relay: no response"
+                : $"Relay {health.Version} · {health.PublicUrl}";
+        }
+        catch (Exception ex)
+        {
+            RelayVersionText.Text = "Relay: " + ex.Message;
+        }
+    }
 
+    private async void LinkKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (!SecurityKey.Available)
+        {
+            MessageBox.Show("This Windows build does not expose the WebAuthn API. Windows 10 1903 or newer is required.",
+                "Security key", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        SecurityKeyText.Text = "Waiting for the key — touch it now…";
+        var (ok, error) = await SecurityKey.LinkAsync(App.Host);
+        var link = SecurityKey.Current(App.Host.Config);
+        if (ok && link != null)
+        {
+            SecurityKeyText.Text = $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
+            MessageBox.Show("Security key linked. Touch it whenever Sentinel asks to unlock, or use the 2FA code.",
+                "Security key", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        SecurityKeyText.Text = $"Link failed · {error}";
+    }
+
+    private void RemoveKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (SecurityKey.Current(App.Host.Config) == null)
+        {
+            SecurityKeyText.Text = "No key linked";
+            return;
+        }
+        if (MessageBox.Show("Unlink the security key from this PC?", "Security key",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        App.Host.Config.ProtectedSecurityKey = "";
+        App.Host.SaveConfig();
+        SecurityKeyText.Text = "No key linked";
+    }
+
+    private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.Root);
     private void OpenLogs_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.LogsDir);
 
     private async void TestAlarm_Click(object sender, RoutedEventArgs e)

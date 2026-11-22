@@ -110,6 +110,8 @@ abstract class SentinelClient {
   Future<List<PhoneInfo>> fetchPhones();
   Future<void> removePhone(String id);
   Future<void> updateSettings({bool? require2fa, bool? protectPower});
+  Future<void> renameDevice(String name);
+  Future<String> fetchRelayVersion();
   Future<void> removeDevice();
   void dispose();
 }
@@ -298,6 +300,17 @@ class RelayClient implements SentinelClient {
   }
 
   @override
+  Future<void> renameDevice(String name) async {
+    await _api.patch('/api/v1/devices/$_deviceId', {'name': name});
+  }
+
+  @override
+  Future<String> fetchRelayVersion() async {
+    final body = await _api.get('/api/v1/health');
+    return asString(body['version']);
+  }
+
+  @override
   Future<void> removeDevice() async {
     await _api.delete('/api/v1/me');
   }
@@ -421,6 +434,14 @@ class DirectClient implements SentinelClient {
   Future<void> updateSettings({bool? require2fa, bool? protectPower}) async {
     throw const ApiError(400, 'unsupported_direct_mode');
   }
+
+  @override
+  Future<void> renameDevice(String name) async {
+    throw const ApiError(400, 'unsupported_direct_mode');
+  }
+
+  @override
+  Future<String> fetchRelayVersion() async => 'direct';
 
   @override
   Future<void> removeDevice() async {}

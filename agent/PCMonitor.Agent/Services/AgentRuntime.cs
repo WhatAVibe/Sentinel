@@ -107,13 +107,22 @@ public sealed class AgentRuntime : IDisposable
             try
             {
                 var locked = SystemMetrics.IsWorkstationLocked();
-                var hb = await _api.HeartbeatAsync(_host.Away, locked, SystemMetrics.Collect(), _host.CurrentState(), ct)
+                var hb = await _api.HeartbeatAsync(_host.Away, locked, SystemMetrics.Collect(), _host.CurrentState(), _host.TakeNameForPublish(), ct)
                     .ConfigureAwait(false);
                 LastContact = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 LastError = null;
                 if (hb?.Device != null)
                 {
                     UiState.I.UpdateFromDevice(hb.Device);
+                    var remoteName = hb.Device.Name;
+                    if (!string.IsNullOrWhiteSpace(remoteName) &&
+                        remoteName != _cfg.DeviceName &&
+                        !_host.NameRecentlyChanged)
+                    {
+                        _cfg.DeviceName = remoteName;
+                        _host.SaveConfig();
+                        _host.Log.Write("info", "device name synced from relay", new { name = remoteName });
+                    }
                     if (hb.Device.Settings != null &&
                         hb.Device.Settings.ProtectPower != _cfg.ProtectPowerCommands)
                     {

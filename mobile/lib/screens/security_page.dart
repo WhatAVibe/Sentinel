@@ -53,13 +53,14 @@ class _SecurityPageState extends State<SecurityPage> {
   }
 
   Future<void> _unlockScreen() async {
-    final code = await showCodeSheet(
-      context,
-      title: 'Unlock the PC screen',
-      actionLabel: 'Unlock screen',
-    );
-    if (code == null || !mounted) return;
     final state = context.read<AppState>();
+    final code = state.liveCode;
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No 2FA secret on this phone. Re-pair to fetch it.')),
+      );
+      return;
+    }
     final result = await state.command('unlock_screen', code: code);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -68,9 +69,22 @@ class _SecurityPageState extends State<SecurityPage> {
   }
 
   Future<void> _copy(String code) async {
+    final state = context.read<AppState>();
     await Clipboard.setData(ClipboardData(text: code));
+    var onPc = false;
+    try {
+      onPc = (await state.copyToPc(code)).ok;
+    } catch (_) {
+      onPc = false;
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(onPc
+            ? 'Code sent to your PC — press Ctrl+V there'
+            : 'Code copied on this phone'),
+      ),
+    );
   }
 
   Future<void> _verify(String code) async {
@@ -202,8 +216,8 @@ class _SecurityPageState extends State<SecurityPage> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: code.isEmpty ? null : () => _copy(code),
-                      icon: const Icon(Icons.copy_rounded, size: 16),
-                      label: const Text('Copy'),
+                      icon: const Icon(Icons.computer_rounded, size: 16),
+                      label: const Text('Copy to PC'),
                     ),
                   ),
                   const SizedBox(width: 10),

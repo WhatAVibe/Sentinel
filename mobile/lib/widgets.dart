@@ -252,9 +252,32 @@ class _LiveCodeStripState extends State<LiveCodeStrip> {
   }
 
   Future<void> _copy(String code) async {
+    final state = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: code));
+    var onPc = false;
+    try {
+      onPc = (await state.copyToPc(code)).ok;
+    } catch (_) {
+      onPc = false;
+    }
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(onPc
+            ? 'Code sent to your PC — press Ctrl+V there'
+            : 'Code copied on this phone'),
+      ),
+    );
+  }
+
+  Future<void> _copyLocalOnly(String code) async {
+    final messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: code));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied')));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Code copied on this phone')),
+    );
   }
 
   @override
@@ -264,6 +287,7 @@ class _LiveCodeStripState extends State<LiveCodeStrip> {
 
     return InkWell(
       onTap: ready ? () => _copy(code) : null,
+      onLongPress: ready ? () => _copyLocalOnly(code) : null,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -280,6 +304,8 @@ class _LiveCodeStripState extends State<LiveCodeStrip> {
                 const Icon(Icons.shield_rounded, size: 14, color: C.accent),
                 const SizedBox(width: 7),
                 const Text('2FA CODE', style: TextStyle(fontSize: 9.5, color: C.muted, letterSpacing: 1)),
+                const SizedBox(width: 6),
+                const Icon(Icons.computer_rounded, size: 11, color: C.muted),
                 const Spacer(),
                 Text(
                   ready ? formatCode(code) : '------',
@@ -408,6 +434,26 @@ class _CodeSheetState extends State<_CodeSheet> {
     super.dispose();
   }
 
+  Future<void> _sendToPc(String code) async {
+    final state = context.read<AppState>();
+    try {
+      final result = await state.copyToPc(code);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.ok
+              ? 'Code sent to your PC — press Ctrl+V there'
+              : friendlyError(result.error)),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(error))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -446,6 +492,8 @@ class _CodeSheetState extends State<_CodeSheet> {
             onChanged: (value) {
               _edited = true;
               setState(() => _error = null);
+              final code = value.replaceAll(' ', '');
+              if (code.length == 6) Navigator.pop(context, code);
             },
           ),
           const SizedBox(height: 8),
@@ -469,6 +517,17 @@ class _CodeSheetState extends State<_CodeSheet> {
             const SizedBox(height: 10),
             Text(_error!, style: const TextStyle(color: C.danger, fontSize: 12)),
           ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _controller.text.replaceAll(' ', '').length == 6
+                  ? () => _sendToPc(_controller.text.replaceAll(' ', ''))
+                  : null,
+              icon: const Icon(Icons.computer_rounded, size: 16),
+              label: const Text('Send to PC clipboard'),
+            ),
+          ),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,

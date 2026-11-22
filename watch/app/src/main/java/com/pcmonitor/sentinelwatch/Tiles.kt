@@ -35,6 +35,7 @@ val TILE_ACTIONS = listOf(
     "secure" to "Secure",
     "shot" to "Shot",
     "ring" to "Ring",
+    "copy" to "Copy",
 )
 
 private data class TileSnapshot(

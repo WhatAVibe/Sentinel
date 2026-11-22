@@ -27,6 +27,9 @@ public sealed class AgentHost : IDisposable
     public string AwayReason { get; private set; } = "";
     public DateTime? AwaySince { get; private set; }
 
+    private bool _nameDirty;
+    private long _nameChangedAtMs;
+
     public event Action<string, string>? Notice;       // title, body
     public event Action? PairingChanged;
     public event Action? AwayChanged;
@@ -479,6 +482,22 @@ public sealed class AgentHost : IDisposable
                     PowerActions.ScreenOn();
                     return new CommandOutcome(true);
 
+                case "clipboard":
+                {
+                    var text = Arg("text");
+                    if (string.IsNullOrEmpty(text)) return new CommandOutcome(false, "missing_text");
+                    if (text.Length > 20_000) text = text[..20_000];
+                    if (!SetClipboard(text)) return new CommandOutcome(false, "clipboard_failed");
+                    OnActivity(new ActivityEventData
+                    {
+                        Category = "clipboard",
+                        Severity = "info",
+                        Title = "Clipboard set from your phone",
+                        Detail = new() { ["chars"] = text.Length, ["source"] = source }
+                    });
+                    return new CommandOutcome(true, null, new { chars = text.Length });
+                }
+
                 case "media":
                     PowerActions.MediaPlayPause();
                     return new CommandOutcome(true);
@@ -582,6 +601,58 @@ public sealed class AgentHost : IDisposable
 
     public Task<CommandOutcome> RunLocalAsync(string type, Dictionary<string, JsonElement>? args = null) =>
         ExecuteCommandAsync(new CommandEnvelope { Id = Guid.NewGuid().ToString("N"), Type = type, Args = args }, "desktop");
+
+    private static bool SetClipboard(string text)
+    {
+        try
+        {
+            var app = Application.Current;
+            if (app != null)
+            {
+                app.Dispatcher.Invoke(() => Clipboard.SetText(text));
+                return true;
+            }
+        }
+        catch
+        {
+            // fall through to a private STA thread
+        }
+
+        var done = false;
+        var thread = new System.Threading.Thread(() =>
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                done = true;
+            }
+            catch
+            {
+                // ignored
+            }
+        });
+        thread.SetApartmentState(System.Threading.ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+        thread.Join(2000);
+        return done;
+    }
+
+    public void PublishName()
+    {
+        _nameDirty = true;
+        _nameChangedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    public string? TakeNameForPublish()
+    {
+        if (!_nameDirty) return null;
+        _nameDirty = false;
+        return Config.DeviceName;
+    }
+
+    public bool NameRecentlyChanged =>
+        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _nameChangedAtMs < 30_000;
 
     // ------------------------------------------------------------------ power + messages
 

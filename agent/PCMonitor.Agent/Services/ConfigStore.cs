@@ -12,6 +12,7 @@ public sealed class AppConfig
     public string ProtectedAgentToken { get; set; } = "";
     public string ProtectedTotpSecret { get; set; } = "";
     public string ProtectedLocalToken { get; set; } = "";
+    public string ProtectedSecurityKey { get; set; } = "";
 
     public string PowerActionMode { get; set; } = "confirm";
     public string PowerActionMessage { get; set; } = "Your phone asked to {action} this PC.";

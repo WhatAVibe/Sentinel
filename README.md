@@ -14,7 +14,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
-[![Version](https://img.shields.io/badge/version-1.3.0-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-1.4.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -125,6 +125,8 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **Messages** | Styled toast / dialog / alert / banner, fullscreen takeover, reply from the PC |
 | **Away mode** | Screensaver, optional lock delay, random-interval screenshots, extra shots on activity |
 | **2FA everywhere** | TOTP gates unlock, disarm, secure-lock release, phone removal and agent exit |
+| **Clipboard push** | Tap the live code on the phone or watch to put it on the PC clipboard, then Ctrl+V |
+| **Hardware key** | Link a FIDO2 key (YubiKey, Flipper) and unlock locally with a touch |
 | **Secure lock** | Full-desktop 2FA lock that swallows shortcuts and input until the code is entered |
 | **Watchdog** | Detached supervisor relaunches the agent after an unauthorized kill |
 | **Multiple PCs** | Pair several PCs, switch between them, give each a local name |
@@ -394,8 +396,8 @@ Add them from the watch's tile carousel (**Add tiles → Sentinel**):
 |---|---|---|
 | **Sentinel dashboard** | configurable stack: name, status, 2FA code, countdown | your choice |
 | **Sentinel status** | name, state, live code | Lock, Unlock |
-| **Sentinel actions** | quick actions only | your choice |
-| **Sentinel code** | big code + countdown | — |
+| **Sentinel actions** | quick actions only | your choice (Lock, Unlock, Away, Secure, Shot, Ring, **Copy** code to the PC) |
+| **Sentinel code** | big code + countdown | - |
 
 **Settings → Tile layout** on the watch picks which rows and buttons appear. Tiles refresh on a 30-second
 interval requested from the launcher; open the app for a guaranteed live code.
@@ -571,10 +573,10 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.2.5 | C# / .NET 10 WPF |
-| Relay server | 1.2.4 | Python / Flask / SQLite |
-| Phone app | 1.2.6 (build 11) | Flutter |
-| Wear OS app | 1.3.1 | Kotlin / Compose / Tiles / Complications |
+| Windows agent | 1.3.0 | C# / .NET 10 WPF |
+| Relay server | 1.2.5 | Python / Flask / SQLite |
+| Phone app | 1.3.0 (build 12) | Flutter |
+| Wear OS app | 1.3.2 | Kotlin / Compose / Tiles / Complications |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

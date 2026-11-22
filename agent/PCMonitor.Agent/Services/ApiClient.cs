@@ -135,11 +135,12 @@ public sealed class ApiClient : IDisposable
     public Task<LinkRequestResponse> CreateLinkRequestAsync(CancellationToken ct) =>
         SendAsync<LinkRequestResponse>(HttpMethod.Post, "/api/v1/agent/link-request", new { }, ct)!;
 
-    public Task<HeartbeatResponse> HeartbeatAsync(bool away, bool locked, MetricsDto metrics, StateDto state, CancellationToken ct) =>
+    public Task<HeartbeatResponse> HeartbeatAsync(bool away, bool locked, MetricsDto metrics, StateDto state, string? name, CancellationToken ct) =>
         SendAsync<HeartbeatResponse>(HttpMethod.Post, "/api/v1/agent/heartbeat", new
         {
             away,
             locked,
+            name,
             agent_version = AgentInfo.Version,
             metrics,
             state
@@ -163,6 +164,9 @@ public sealed class ApiClient : IDisposable
     public Task PostStateAsync(bool? away, bool? locked, StateDto? state, CancellationToken ct, object? settings = null) =>
         SendAsync<JsonElement>(HttpMethod.Post, "/api/v1/agent/state",
             new { away, locked, state, settings }, ct);
+
+    public Task PostNameAsync(string name, CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Post, "/api/v1/agent/state", new { name }, ct);
 
     public Task PostMessageReplyAsync(string messageId, string? reply, string status, CancellationToken ct) =>
         SendAsync<JsonElement>(HttpMethod.Post, $"/api/v1/agent/messages/{messageId}/reply",

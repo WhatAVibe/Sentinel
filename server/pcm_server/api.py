@@ -43,6 +43,7 @@ ALLOWED_COMMANDS = {
     "agent_exit",
     "lock_screen",
     "unlock_screen",
+    "clipboard",
 }
 
 CODE_REQUIRED = {"unlock", "away_disable", "agent_exit", "unlock_screen"}
@@ -518,6 +519,8 @@ def agent_heartbeat():
             g.device_id,
         ),
     )
+    if body.get("name"):
+        db().execute("UPDATE devices SET name=? WHERE id=?", (str(body["name"]).strip()[:64], g.device_id))
     device = db().one("SELECT * FROM devices WHERE id=?", (g.device_id,))
     payload = serialize_device(device)
     hub().push_to_device_clients(g.device_id, {"type": "state", "device": payload})
@@ -740,6 +743,8 @@ def agent_state():
         db().execute("UPDATE devices SET state=? WHERE id=?", (json.dumps(body["state"]), g.device_id))
     if "settings" in body:
         db().execute("UPDATE devices SET settings=? WHERE id=?", (json.dumps(body["settings"]), g.device_id))
+    if body.get("name"):
+        db().execute("UPDATE devices SET name=? WHERE id=?", (str(body["name"]).strip()[:64], g.device_id))
     device = db().one("SELECT * FROM devices WHERE id=?", (g.device_id,))
     payload = serialize_device(device)
     hub().push_to_device_clients(g.device_id, {"type": "state", "device": payload})

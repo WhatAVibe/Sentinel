@@ -55,6 +55,7 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Lock PC", null, (_, _) => PowerActions.Lock()));
         menu.Items.Add(new ToolStripMenuItem("Secure lock (2FA)", null, (_, _) => _host.EnterSecureLock("Locked from the tray menu.")));
+        menu.Items.Add(new ToolStripMenuItem("Copy 2FA code", null, (_, _) => CopyCode()));
         menu.Items.Add(new ToolStripMenuItem("Take screenshot", null, (_, _) => _ = _host.CaptureAndUploadAsync("tray")));
         menu.Items.Add(_awayItem);
         menu.Items.Add(_disarmItem);
@@ -73,6 +74,10 @@ public sealed class TrayService : IDisposable
             ContextMenuStrip = menu
         };
         _icon.DoubleClick += (_, _) => _show();
+        _icon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left) _show();
+        };
         _icon.BalloonTipClicked += (_, _) => _show();
 
         host.Runtime.StatusChanged += _ => UiState.Post(Update);
@@ -115,6 +120,21 @@ public sealed class TrayService : IDisposable
             await _host.EnableAwayAsync("tray");
         else
             _disarm();
+    }
+
+    private void CopyCode()
+    {
+        try
+        {
+            var code = Totp.Now(_host.Config.TotpSecret);
+            if (string.IsNullOrEmpty(code)) return;
+            Clipboard.SetText(code);
+            ShowBalloon("Sentinel", $"2FA code {code} copied to the clipboard.");
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private void ToggleStartup()

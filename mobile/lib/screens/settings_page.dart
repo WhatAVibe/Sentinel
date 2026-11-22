@@ -316,8 +316,8 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.2.5'),
-                const _Line('Relay protocol', 'v1.1'),
+                const _Line('App', 'Sentinel 1.3.0'),
+                _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'
                     : state.device!.agentVersion),

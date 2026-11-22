@@ -31,6 +31,12 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Length > 0 && string.Equals(e.Args[0], "--security-key", StringComparison.OrdinalIgnoreCase))
+        {
+            Environment.Exit(SecurityKey.RunHelper(e.Args.Skip(1).ToArray()));
+            return;
+        }
+
         var watchdogIndex = Array.FindIndex(e.Args, a => string.Equals(a, "--watchdog", StringComparison.OrdinalIgnoreCase));
         if (watchdogIndex >= 0 && watchdogIndex + 1 < e.Args.Length && int.TryParse(e.Args[watchdogIndex + 1], out var watchedPid))
         {

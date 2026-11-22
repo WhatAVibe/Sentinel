@@ -31,6 +31,8 @@
         <Grid Grid.Row="3" Margin="0,14,0,0">
             <Button Content="Cancel" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="16,8"
                     Click="Cancel_Click" />
+            <Button x:Name="KeyButton" Content="Use security key" Style="{StaticResource GhostButton}"
+                    HorizontalAlignment="Center" Padding="16,8" Click="Key_Click" />
             <Button Content="Verify" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
                     Padding="20,8" Click="Verify_Click" IsDefault="True" />
         </Grid>

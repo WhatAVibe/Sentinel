@@ -35,16 +35,16 @@ Open **Settings -> Tile layout** to choose what the all-in-one tile stacks:
 - status (Online / Offline / Away / Secure lock)
 - 2FA code
 - countdown
-- any of the action buttons: Lock, Unlock, Away, Secure, Shot, Ring
+- any of the action buttons: Lock, Unlock, Away, Secure, Shot, Ring, Copy
 
 Changes are saved immediately and the tiles are refreshed. Order is fixed: name, status, code,
 countdown, then buttons in the order above.
 
 Tiles cannot perform network calls on tap. A button launches the app with an action extra, and the
-app performs the command and returns to the carousel, still one tap from the tile. The 2FA code is
-computed when the tile is built; `setFreshnessIntervalMillis(30s)` asks the launcher to refresh, but
-the launcher decides how often, so the code can be a few seconds stale. Open the app (or the code
-tile) for the live code.
+app performs the command and returns to the carousel, still one tap from the tile. **Copy** pushes the
+current 2FA code to the PC clipboard. The 2FA code is computed when the tile is built;
+`setFreshnessIntervalMillis(30s)` asks the launcher to refresh, but the launcher decides how often, so
+the code can be a few seconds stale. Open the app (or the code tile) for the live code.
 
 ## Build
 

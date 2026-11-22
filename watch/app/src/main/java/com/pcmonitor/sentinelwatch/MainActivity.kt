@@ -436,7 +436,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.3.1", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 1.3.2", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }
@@ -522,6 +522,11 @@ private fun QuickActionScreen(action: String, session: Session, onDone: () -> Un
                     )
                     "shot" -> api.command(session.deviceId, "screenshot")
                     "ring" -> api.command(session.deviceId, "alarm")
+                    "copy" -> api.command(
+                        session.deviceId,
+                        "clipboard",
+                        JSONObject().put("text", Totp.now(session.secret)),
+                    )
                 }
             }
         }.exceptionOrNull()

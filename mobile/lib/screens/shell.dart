@@ -91,11 +91,11 @@ class _ShellState extends State<Shell> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: C.surface,
-        title: const Text('Local name', style: TextStyle(fontSize: 16)),
+        title: const Text('Rename PC', style: TextStyle(fontSize: 16)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(hintText: pc.deviceName),
+          decoration: InputDecoration(hintText: pc.deviceName, labelText: 'Name shown on this phone'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
@@ -107,7 +107,15 @@ class _ShellState extends State<Shell> {
       ),
     );
     controller.dispose();
-    if (name != null) await state.renameSession(pc.deviceId, name);
+    if (name == null) return;
+    await state.renameSession(pc.deviceId, name);
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || pc.isDirect || pc.deviceId != state.session?.deviceId) return;
+    await state.renameDeviceOnPc(trimmed);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Renamed on the PC too')),
+    );
   }
 
   @override
@@ -170,15 +178,18 @@ class _ShellState extends State<Shell> {
           SecurityPage(),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (value) => setState(() => _index = value),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.timeline_rounded), label: 'Activity'),
-          BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), label: 'Shots'),
-          BottomNavigationBarItem(icon: Icon(Icons.shield_outlined), label: 'Security'),
-        ],
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: BottomNavigationBar(
+          currentIndex: _index,
+          onTap: (value) => setState(() => _index = value),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.timeline_rounded), label: 'Activity'),
+            BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), label: 'Shots'),
+            BottomNavigationBarItem(icon: Icon(Icons.shield_outlined), label: 'Security'),
+          ],
+        ),
       ),
     );
   }

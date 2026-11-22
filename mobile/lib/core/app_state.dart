@@ -34,6 +34,7 @@ class AppState extends ChangeNotifier {
   bool canUseBiometrics = false;
   bool hasPin = false;
   String? lastError;
+  String relayVersion = '';
 
   StreamSubscription<PushEvent>? _subscription;
   Timer? _poll;
@@ -111,6 +112,11 @@ class AppState extends ChangeNotifier {
       relayOnline = true;
       connected = device?.online ?? false;
       lastError = null;
+      try {
+        relayVersion = await current.fetchRelayVersion();
+      } catch (_) {
+        // version display is best-effort
+      }
       final fetched = await current.fetchEvents(since: 0);
       events = fetched.reversed.toList();
       eventsHasMore = fetched.length >= 200;
@@ -335,6 +341,21 @@ class AppState extends ChangeNotifier {
       return await current.verifyCode(code);
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<CommandResult> copyToPc(String text) => command('clipboard', args: {'text': text});
+
+  Future<void> renameDeviceOnPc(String name) async {
+    final current = client;
+    if (current == null || session?.isDirect == true) return;
+    try {
+      await current.renameDevice(name);
+      device = await current.fetchDevice();
+      relayOnline = true;
+      notifyListeners();
+    } catch (_) {
+      // keep the local alias even when the relay is unreachable
     }
   }
 

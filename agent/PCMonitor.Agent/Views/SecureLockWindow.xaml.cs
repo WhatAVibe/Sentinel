@@ -36,6 +36,9 @@ public partial class SecureLockWindow : Window
         {
             if (!_allowClose) e.Cancel = true;
         };
+        KeyButton.Visibility = SecurityKey.Current(App.Host.Config) == null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     public void CloseAuthorized()
@@ -147,6 +150,30 @@ public partial class SecureLockWindow : Window
     {
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
+    }
+
+    private async void Key_Click(object sender, RoutedEventArgs e)
+    {
+        KeyButton.IsEnabled = false;
+        ErrorText.Visibility = Visibility.Collapsed;
+        KeyHintText.Text = "Touch your security key…";
+        KeyHintText.Visibility = Visibility.Visible;
+        var (ok, error) = await SecurityKey.VerifyAsync(App.Host);
+        KeyButton.IsEnabled = true;
+        if (!ok)
+        {
+            KeyHintText.Text = error == "cancelled"
+                ? "Key touch cancelled. Try again."
+                : $"Security key check failed ({error}).";
+            return;
+        }
+        if (App.Host.Config.RequirePhonePresence && !App.Host.Adb.TrustedPresent)
+        {
+            KeyHintText.Text = "Phone presence is required. Connect your phone over ADB first.";
+            return;
+        }
+        KeyHintText.Visibility = Visibility.Collapsed;
+        App.Host.ExitSecureLock("security key");
     }
 
     private const uint SWP_NOSIZE = 0x0001;

@@ -49,6 +49,11 @@ the 2FA code and does not protect the relay.
 - Works with any authenticator: the app's Security tab, Yubico Authenticator, a Flipper Zero TOTP app,
   etc. The tray dialog accepts the six digits typed manually.
 - Optional ADB presence requirement adds a "something you have nearby" factor for disarming.
+- **Physical security key (FIDO2).** Settings → Physical security key links a YubiKey, a Flipper Zero with
+  the FIDO app, or any CTAP2 authenticator through the Windows WebAuthn API. Once linked, local unlock
+  prompts (secure lock, exit, unpair, phone removal) accept a key touch instead of the code. The assertion
+  is matched against the stored credential id by the platform; the credential id is DPAPI-protected in
+  `config.json`. Unlinking is done from Settings and needs an unlocked desktop.
 
 ## Screenshots, clipboard, privacy
 
@@ -64,6 +69,8 @@ Treat `storage/shots` and `storage/logs` as sensitive:
   mode is active. The keyboard hook itself always runs so secure lock can block shortcuts, but it does not log
   outside monitoring.
 - Message replies and power-confirm decisions are stored in the messages table and event log.
+- The `clipboard` command lets a paired phone or watch replace the PC clipboard (used to push the 2FA code
+  to Ctrl+V). It does not read the clipboard back; clipboard capture stays opt-in and local.
 - Screenshots of the Windows lock screen contain no credentials, but may reveal account names.
 
 ## Transport

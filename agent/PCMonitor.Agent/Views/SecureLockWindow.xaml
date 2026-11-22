@@ -35,6 +35,10 @@
                            Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
                 <Button Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"
                         Padding="18,11" Click="Unlock_Click" IsDefault="True" />
+                <TextBlock x:Name="KeyHintText" FontSize="11" Foreground="{StaticResource Muted}"
+                           Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+                <Button x:Name="KeyButton" Content="Use security key" Style="{StaticResource GhostButton}"
+                        Margin="0,8,0,0" Padding="18,10" Click="Key_Click" />
                 <TextBlock Text="Input is restricted while this screen is active. Ctrl+Alt+Delete still belongs to Windows."
                            FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
                            TextAlignment="Center" Margin="0,14,0,0" />
