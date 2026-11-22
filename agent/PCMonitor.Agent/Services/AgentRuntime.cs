@@ -114,6 +114,7 @@ public sealed class AgentRuntime : IDisposable
                 if (hb?.Device != null)
                 {
                     UiState.I.UpdateFromDevice(hb.Device);
+                    _host.SetLinkedDevices(hb.Device.LinkedDevices);
                     var remoteName = hb.Device.Name;
                     if (!string.IsNullOrWhiteSpace(remoteName) &&
                         remoteName != _cfg.DeviceName &&
@@ -181,7 +182,7 @@ public sealed class AgentRuntime : IDisposable
                         }
                     }
 
-                    var outcome = await _host.ExecuteCommandAsync(command, "remote").ConfigureAwait(false);
+                    var outcome = await _host.ExecuteCommandAsync(command, command.Source ?? "remote").ConfigureAwait(false);
                     await _api.PostCommandResultAsync(command.Id, outcome.Ok, outcome.Error, outcome.Data, ct)
                         .ConfigureAwait(false);
                     _host.Log.Write("info", $"command {command.Type}", new { command.Id, outcome.Ok, outcome.Error });

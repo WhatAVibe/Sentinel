@@ -16,7 +16,15 @@ public partial class ImageViewerWindow : Window
         InitializeComponent();
         _path = path;
         Caption.Text = caption;
-        Loaded += (_, _) => LoadImage();
+        Loaded += (_, _) =>
+        {
+            LoadImage();
+            FitToViewport();
+        };
+        Scroller.SizeChanged += (_, _) =>
+        {
+            if (_zoom <= 1.001) FitToViewport();
+        };
         PreviewMouseWheel += OnWheel;
         KeyDown += (_, e) =>
         {
@@ -44,10 +52,25 @@ public partial class ImageViewerWindow : Window
         }
     }
 
+    private void FitToViewport()
+    {
+        _zoom = 1;
+        Preview.LayoutTransform = Transform.Identity;
+        Preview.Width = Math.Max(1, Scroller.ActualWidth);
+        Preview.Height = Math.Max(1, Scroller.ActualHeight);
+    }
+
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
         _zoom = Math.Clamp(_zoom + (e.Delta > 0 ? 0.12 : -0.12), 0.2, 5);
-        Preview.LayoutTransform = new ScaleTransform(_zoom, _zoom);
+        if (_zoom <= 1.001)
+        {
+            FitToViewport();
+        }
+        else
+        {
+            Preview.LayoutTransform = new ScaleTransform(_zoom, _zoom);
+        }
         e.Handled = true;
     }
 

@@ -11,12 +11,6 @@
                     <TextBlock Text="Remote control and live status" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Border Style="{StaticResource Pill}" Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="7" Height="7" Fill="{Binding ConnectionBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Connection}" FontSize="11" Margin="7,0,0,0" />
-                        </StackPanel>
-                    </Border>
                     <Button Content="Refresh" Style="{StaticResource GhostButton}" Padding="14,8" Click="Refresh_Click" />
                 </StackPanel>
             </Grid>

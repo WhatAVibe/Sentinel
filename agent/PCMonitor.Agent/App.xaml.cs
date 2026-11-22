@@ -33,7 +33,7 @@ public partial class App : Application
 
         if (e.Args.Length > 0 && string.Equals(e.Args[0], "--security-key", StringComparison.OrdinalIgnoreCase))
         {
-            Environment.Exit(SecurityKey.RunHelper(e.Args.Skip(1).ToArray()));
+            Shutdown();
             return;
         }
 

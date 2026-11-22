@@ -161,6 +161,13 @@ public sealed class ApiClient : IDisposable
         SendAsync<JsonElement>(HttpMethod.Post, "/api/v1/agent/events",
             new { events = events.Select(e => e.ToWire()).ToArray() }, ct);
 
+    public async Task<AgentEventsResponse> GetEventsAsync(long before, int limit, CancellationToken ct)
+    {
+        var path = $"/api/v1/agent/events?limit={limit}" + (before > 0 ? $"&before={before}" : "");
+        return await SendAsync<AgentEventsResponse>(HttpMethod.Get, path, null, ct).ConfigureAwait(false)
+               ?? new AgentEventsResponse();
+    }
+
     public Task PostStateAsync(bool? away, bool? locked, StateDto? state, CancellationToken ct, object? settings = null) =>
         SendAsync<JsonElement>(HttpMethod.Post, "/api/v1/agent/state",
             new { away, locked, state, settings }, ct);
@@ -180,6 +187,21 @@ public sealed class ApiClient : IDisposable
 
     public Task RemovePhoneAsync(string phoneId, CancellationToken ct) =>
         SendAsync<JsonElement>(HttpMethod.Delete, $"/api/v1/agent/phones/{phoneId}", null, ct);
+
+    public Task RenamePhoneAsync(string phoneId, string name, CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Patch, $"/api/v1/agent/phones/{phoneId}", new { name }, ct);
+
+    public Task SetPrimaryPhoneAsync(string phoneId, bool primary, CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Patch, $"/api/v1/agent/phones/{phoneId}", new { primary }, ct);
+
+    public Task ConfirmPhoneAsync(string phoneId, string code, CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Post, $"/api/v1/agent/phones/{phoneId}/confirm", new { code }, ct);
+
+    public Task PurgeScreenshotsAsync(CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Post, "/api/v1/agent/screenshots/purge", new { }, ct);
+
+    public Task PurgeDeviceAsync(CancellationToken ct) =>
+        SendAsync<JsonElement>(HttpMethod.Delete, "/api/v1/agent/device", null, ct);
 
     public async Task<ScreenshotUploadResponse> UploadScreenshotAsync(CaptureResult capture, CancellationToken ct)
     {

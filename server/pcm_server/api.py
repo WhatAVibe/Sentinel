@@ -124,6 +124,8 @@ def mobile_required(fn):
         g.device = mobile["device"]
         g.device_id = mobile["device"]["id"]
         g.actor = f"mobile:{mobile['id'][:8]}"
+        if not mobile.get("confirmed", 1) and request.endpoint != "api.me":
+            return jsonify(error="pending_confirmation"), 403
         name = (request.headers.get("X-Device-Name") or "").strip()[:64]
         if name and name != (mobile.get("name") or ""):
             db().execute(
@@ -167,6 +169,9 @@ def serialize_device(row: dict, include_secret: bool = False) -> dict:
         "state": state,
         "metrics": metrics,
         "relay": hub().agent_online(row["id"]),
+        "linked_devices": db().one(
+            "SELECT COUNT(*) AS n FROM mobiles WHERE device_id=? AND confirmed=1", (row["id"],)
+        )["n"],
         "created_at": row.get("created_at"),
     }
     if include_secret:
@@ -220,6 +225,8 @@ def serialize_phone(row: dict, current: bool = False) -> dict:
         "created_at": row.get("created_at"),
         "last_seen": row.get("last_seen"),
         "current": current,
+        "primary": bool(row.get("is_primary")),
+        "confirmed": bool(row.get("confirmed", 1)),
     }
 
 
@@ -456,13 +463,13 @@ def pair_approve():
     if existing:
         mid = existing["id"]
         db().execute(
-            "UPDATE mobiles SET name = ?, token_hash = ?, last_seen = ? WHERE id = ?",
+            "UPDATE mobiles SET name = ?, token_hash = ?, last_seen = ?, confirmed = 0 WHERE id = ?",
             (mobile_name, hash_token(mobile_token), now_ms(), mid),
         )
     else:
         mid = uuid.uuid4().hex
         db().execute(
-            "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, uid) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, uid, confirmed) VALUES (?,?,?,?,?,?,0)",
             (mid, mobile_name, device["id"], hash_token(mobile_token), now_ms(), mobile_uid or None),
         )
     db().execute("UPDATE pair_requests SET status='approved' WHERE id=?", (rid,))
@@ -473,6 +480,7 @@ def pair_approve():
         device=serialize_device(device, include_secret=True),
         mobile_token=mobile_token,
         mobile_id=mid,
+        confirmed=False,
         totp_secret=device["totp_secret"],
         server={"name": cfg().data["server_name"], "url": cfg().public_base()},
     )
@@ -650,6 +658,24 @@ def agent_command_result(cid):
     return jsonify(ok=True)
 
 
+@bp.get("/agent/events")
+@agent_required
+def agent_events_history():
+    limit = min(int(request.args.get("limit", 200) or 200), 500)
+    before = int(request.args.get("before", 0) or 0)
+    if before > 0:
+        rows = db().all(
+            "SELECT * FROM events WHERE device_id=? AND id < ? ORDER BY id DESC LIMIT ?",
+            (g.device_id, before, limit),
+        )
+    else:
+        rows = db().all(
+            "SELECT * FROM events WHERE device_id=? ORDER BY id DESC LIMIT ?",
+            (g.device_id, limit),
+        )
+    return jsonify(events=[serialize_event(r) for r in rows], has_more=len(rows) >= limit)
+
+
 @bp.post("/agent/events")
 @agent_required
 def agent_events():
@@ -766,9 +792,95 @@ def agent_remove_phone(mid):
     row = db().one("SELECT * FROM mobiles WHERE id = ? AND device_id = ?", (mid, g.device_id))
     if not row:
         return jsonify(error="not_found"), 404
+    if row.get("is_primary"):
+        return jsonify(error="primary_device"), 409
     db().execute("DELETE FROM mobiles WHERE id = ?", (mid,))
     db().audit(g.actor, "phone.removed", {"device": g.device_id, "phone": mid})
     hub().push_to_device_clients(g.device_id, {"type": "phones"})
+    return jsonify(ok=True)
+
+
+@bp.post("/agent/phones/<mid>/confirm")
+@agent_required
+def agent_confirm_phone(mid):
+    row = db().one("SELECT * FROM mobiles WHERE id = ? AND device_id = ?", (mid, g.device_id))
+    if not row:
+        return jsonify(error="not_found"), 404
+    if not limiter.allow(f"confirm:{mid}", 8, 60):
+        return jsonify(error="too_many_attempts"), 429
+    body = _json_body()
+    code = str(body.get("code") or "").strip()
+    if not verify_totp(g.device["totp_secret"], code):
+        db().audit(g.actor, "phone.confirm_bad_code", {"device": g.device_id, "phone": mid})
+        return jsonify(error="bad_code"), 403
+    limiter.reset(f"confirm:{mid}")
+    db().execute("UPDATE mobiles SET confirmed = 1 WHERE id = ?", (mid,))
+    db().audit(g.actor, "phone.confirmed", {"device": g.device_id, "phone": mid})
+    hub().push_to_device_clients(g.device_id, {"type": "phones"})
+    return jsonify(ok=True, phone=serialize_phone(db().one("SELECT * FROM mobiles WHERE id=?", (mid,))))
+
+
+@bp.patch("/agent/phones/<mid>")
+@agent_required
+def agent_patch_phone(mid):
+    row = db().one("SELECT * FROM mobiles WHERE id = ? AND device_id = ?", (mid, g.device_id))
+    if not row:
+        return jsonify(error="not_found"), 404
+    body = _json_body()
+    if "name" in body:
+        name = str(body.get("name") or "").strip()[:64]
+        if name:
+            db().execute("UPDATE mobiles SET name = ? WHERE id = ?", (name, mid))
+    if "primary" in body:
+        if bool(body.get("primary")):
+            db().execute("UPDATE mobiles SET is_primary = 0 WHERE device_id = ?", (g.device_id,))
+            db().execute("UPDATE mobiles SET is_primary = 1 WHERE id = ?", (mid,))
+        else:
+            db().execute("UPDATE mobiles SET is_primary = 0 WHERE id = ?", (mid,))
+    db().audit(g.actor, "phone.patch", {"device": g.device_id, "phone": mid, "body": body})
+    hub().push_to_device_clients(g.device_id, {"type": "phones"})
+    updated = db().one("SELECT * FROM mobiles WHERE id=?", (mid,))
+    return jsonify(ok=True, phone=serialize_phone(updated))
+
+
+@bp.post("/agent/screenshots/purge")
+@agent_required
+def agent_purge_screenshots():
+    rows = db().all("SELECT id, path FROM screenshots WHERE device_id = ?", (g.device_id,))
+    removed = 0
+    for row in rows:
+        try:
+            path = Path(row["path"])
+            if path.exists():
+                path.unlink()
+                removed += 1
+        except OSError:
+            pass
+    db().execute("DELETE FROM screenshots WHERE device_id = ?", (g.device_id,))
+    db().audit(g.actor, "screenshots.purged", {"device": g.device_id, "count": len(rows)})
+    hub().push_to_device_clients(g.device_id, {"type": "shots", "screenshots": []})
+    return jsonify(ok=True, purged=len(rows), removed=removed)
+
+
+@bp.delete("/agent/device")
+@agent_required
+def agent_purge_device():
+    device_id = g.device_id
+    shots = db().all("SELECT path FROM screenshots WHERE device_id = ?", (device_id,))
+    for row in shots:
+        try:
+            path = Path(row["path"])
+            if path.exists():
+                path.unlink()
+        except OSError:
+            pass
+    db().execute("DELETE FROM mobiles WHERE device_id = ?", (device_id,))
+    db().execute("DELETE FROM commands WHERE device_id = ?", (device_id,))
+    db().execute("DELETE FROM events WHERE device_id = ?", (device_id,))
+    db().execute("DELETE FROM screenshots WHERE device_id = ?", (device_id,))
+    db().execute("DELETE FROM messages WHERE device_id = ?", (device_id,))
+    db().execute("DELETE FROM devices WHERE id = ?", (device_id,))
+    db().audit(g.actor, "device.purged", {"device": device_id, "phones": len(shots)})
     return jsonify(ok=True)
 
 
@@ -803,6 +915,8 @@ def me():
             "name": g.mobile["name"],
             "created_at": g.mobile["created_at"],
             "last_seen": g.mobile["last_seen"],
+            "primary": bool(g.mobile.get("is_primary")),
+            "confirmed": bool(g.mobile.get("confirmed", 1)),
         },
         device=serialize_device(device, include_secret=True),
         totp_secret=device["totp_secret"],
@@ -814,6 +928,8 @@ def me():
 @bp.delete("/me")
 @mobile_required
 def remove_me():
+    if g.mobile.get("is_primary"):
+        return jsonify(error="primary_device"), 409
     db().execute("DELETE FROM mobiles WHERE id=?", (g.mobile["id"],))
     db().audit("mobile", "mobile.removed", {"mobile": g.mobile["id"], "device": g.device_id})
     return jsonify(ok=True)
@@ -897,7 +1013,9 @@ def create_command(did):
         args = {}
     if code:
         args["code"] = code
-    command = issue_command(did, ctype, args, source=f"mobile:{g.mobile['id'][:8]}")
+    kind = "watch" if "SentinelWatch" in (request.headers.get("User-Agent") or "") else "phone"
+    label = (g.mobile.get("name") or kind)[:48]
+    command = issue_command(did, ctype, args, source=f"{kind}:{label}:{g.mobile['id'][:8]}")
     return jsonify(ok=True, command=command)
 
 

@@ -32,8 +32,11 @@ public partial class MainWindow : Window
         Nav.SelectedIndex = 0;
     }
 
+    private bool _serverRevealed;
+
     public void NavigateTo(string key)
     {
+        HideServerUrl();
         Nav.SelectedIndex = key switch
         {
             "activity" => 1,
@@ -42,6 +45,22 @@ public partial class MainWindow : Window
             "settings" => 4,
             _ => 0
         };
+    }
+
+    private void ServerText_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_serverRevealed) HideServerUrl();
+        else
+        {
+            _serverRevealed = true;
+            ServerText.Effect = null;
+        }
+    }
+
+    private void HideServerUrl()
+    {
+        _serverRevealed = false;
+        ServerText.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 6 };
     }
 
     private void Nav_SelectionChanged(object sender, SelectionChangedEventArgs e)

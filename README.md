@@ -14,7 +14,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![App](https://img.shields.io/badge/app-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)](#3-phone-app)
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
-[![Version](https://img.shields.io/badge/version-1.4.0-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2.0.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -573,9 +573,9 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.3.2 | C# / .NET 10 WPF |
-| Relay server | 1.2.5 | Python / Flask / SQLite |
-| Phone app | 1.3.0 (build 12) | Flutter |
+| Windows agent | 1.5.0 | C# / .NET 10 WPF |
+| Relay server | 1.3.0 | Python / Flask / SQLite |
+| Phone app | 1.4.0 (build 13) | Flutter |
 | Wear OS app | 1.3.2 | Kotlin / Compose / Tiles / Complications |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 

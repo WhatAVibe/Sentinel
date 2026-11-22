@@ -39,6 +39,7 @@ public partial class SecureLockWindow : Window
         KeyButton.Visibility = SecurityKey.Current(App.Host.Config) == null
             ? Visibility.Collapsed
             : Visibility.Visible;
+        MasterPanel.Visibility = App.Host.HasMasterPassword ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void CloseAuthorized()
@@ -150,6 +151,24 @@ public partial class SecureLockWindow : Window
     {
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
+    }
+
+    private void MasterUnlock_Click(object sender, RoutedEventArgs e)
+    {
+        if (!App.Host.VerifyCode(MasterBox.Password))
+        {
+            ShowError("That recovery password is not correct.");
+            MasterBox.SelectAll();
+            MasterBox.Focus();
+            return;
+        }
+        if (App.Host.Config.RequirePhonePresence && !App.Host.Adb.TrustedPresent)
+        {
+            ShowError("Phone presence is required. Connect your phone over ADB first.");
+            return;
+        }
+        ErrorText.Visibility = Visibility.Collapsed;
+        App.Host.ExitSecureLock("recovery password");
     }
 
     private async void Key_Click(object sender, RoutedEventArgs e)

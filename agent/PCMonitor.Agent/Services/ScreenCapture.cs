@@ -132,6 +132,21 @@ public static class ScreenCapture
         return results;
     }
 
+    public static (int Width, int Height) ImageSize(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+            var frame = decoder.Frames[0];
+            return (frame.PixelWidth, frame.PixelHeight);
+        }
+        catch
+        {
+            return (0, 0);
+        }
+    }
+
     public static BitmapImage? LoadThumbnail(string path, int decodeWidth = 520)
     {
         try

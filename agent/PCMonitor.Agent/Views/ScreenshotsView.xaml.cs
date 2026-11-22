@@ -42,6 +42,28 @@ public partial class ScreenshotsView : UserControl
         }
     }
 
+    private async void PurgeRelay_Click(object sender, RoutedEventArgs e)
+    {
+        if (!App.Host.Config.Paired)
+        {
+            MessageBox.Show("Pair this PC first.", "Screenshots", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var result = MessageBox.Show(
+            "Delete every screenshot stored on the relay for this PC? This cannot be undone. Only the copies on this PC remain.",
+            "Purge relay screenshots", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+        try
+        {
+            await App.Host.Api.PurgeScreenshotsAsync(CancellationToken.None);
+            MessageBox.Show("Relay screenshots deleted.", "Screenshots", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Purge relay screenshots", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void Shots_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source) return;

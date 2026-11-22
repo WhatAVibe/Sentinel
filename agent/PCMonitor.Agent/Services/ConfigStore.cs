@@ -13,6 +13,7 @@ public sealed class AppConfig
     public string ProtectedTotpSecret { get; set; } = "";
     public string ProtectedLocalToken { get; set; } = "";
     public string ProtectedSecurityKey { get; set; } = "";
+    public string ProtectedMasterPassword { get; set; } = "";
 
     public string PowerActionMode { get; set; } = "confirm";
     public string PowerActionMessage { get; set; } = "Your phone asked to {action} this PC.";
@@ -73,7 +74,11 @@ public sealed class ConfigStore
 
     public ConfigStore()
     {
-        Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PCMonitor");
+        var roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Sentinel");
+        var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PCMonitor");
+        Root = !File.Exists(Path.Combine(roaming, "config.json")) && File.Exists(Path.Combine(legacy, "config.json"))
+            ? legacy
+            : roaming;
         ConfigPath = Path.Combine(Root, "config.json");
         ShotsDir = Path.Combine(Root, "shots");
         LogsDir = Path.Combine(Root, "logs");

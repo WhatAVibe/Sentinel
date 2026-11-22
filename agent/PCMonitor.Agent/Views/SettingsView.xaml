@@ -18,13 +18,19 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="ServerBox" Padding="10,9" />
+                        <TextBox x:Name="ServerBox" Padding="10,9" Cursor="Hand"
+                                 ToolTip="Click to bring the field into focus"
+                                 PreviewMouseLeftButtonDown="ServerBox_PreviewMouseLeftButtonDown">
+                            <TextBox.Effect>
+                                <BlurEffect Radius="6" />
+                            </TextBox.Effect>
+                        </TextBox>
                         <Button Grid.Column="1" Content="Save &amp; reconnect" Style="{StaticResource PrimaryButton}"
                                 Margin="8,0,0,0" Padding="14,9" Click="SaveServer_Click" />
                     </Grid>
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                         <Button Content="Test connection" Style="{StaticResource GhostButton}" Padding="14,7" Click="Test_Click" />
-                        <Button Content="Pair another phone" Style="{StaticResource GhostButton}" Padding="14,7"
+                        <Button Content="Pair another device" Style="{StaticResource GhostButton}" Padding="14,7"
                                 Margin="8,0,0,0" Click="AddPhone_Click" />
                         <Button Content="Unpair this PC" Style="{StaticResource DangerButton}" Padding="14,7"
                                 Margin="8,0,0,0" Click="Unpair_Click" />
@@ -55,11 +61,11 @@
             <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="Linked phones" Style="{StaticResource H2}" />
+                        <TextBlock Text="Linked devices" Style="{StaticResource H2}" />
                         <Button Content="Refresh" Style="{StaticResource GhostButton}" Padding="12,6"
                                 HorizontalAlignment="Right" Click="RefreshPhones_Click" />
                     </Grid>
-                    <TextBlock Text="Phones that can control this PC. Remove a stale or lost device here."
+                    <TextBlock Text="Devices that can control this PC. Mark one as primary so it cannot be unlinked by another device."
                                Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                     <ItemsControl x:Name="PhonesList" Margin="0,12,0,0">
                         <ItemsControl.ItemTemplate>
@@ -71,15 +77,41 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" />
+                                                <Border Background="#1B2B4D" BorderBrush="#31558F" BorderThickness="1"
+                                                        CornerRadius="8" Padding="6,2" Margin="8,0,0,0"
+                                                        Visibility="{Binding PrimaryVisibility}">
+                                                    <TextBlock Text="PRIMARY" FontSize="9" Foreground="#8FB4FF" />
+                                                </Border>
+                                                <Border Background="#3A2B12" BorderBrush="#7A5A1E" BorderThickness="1"
+                                                        CornerRadius="8" Padding="6,2" Margin="8,0,0,0"
+                                                        Visibility="{Binding ConfirmVisibility}">
+                                                    <TextBlock Text="PENDING CONFIRMATION" FontSize="9" Foreground="#F2C46D" />
+                                                </Border>
+                                            </StackPanel>
                                             <TextBlock Text="{Binding CreatedText, StringFormat='linked {0}'}"
                                                        Style="{StaticResource MutedText}" Margin="0,3,0,0" />
                                             <TextBlock Text="{Binding LastSeenText, StringFormat='last seen {0}'}"
                                                        Style="{StaticResource MutedText}" Margin="0,1,0,0" />
                                         </StackPanel>
-                                        <Button Grid.Column="1" Content="Remove" Style="{StaticResource DangerButton}"
-                                                Padding="12,6" Tag="{Binding Id}" VerticalAlignment="Center"
-                                                Click="RemovePhone_Click" />
+                                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <Button Content="Confirm" Style="{StaticResource PrimaryButton}"
+                                                    Padding="10,6" Margin="0,0,6,0" Tag="{Binding Id}"
+                                                    Visibility="{Binding ConfirmVisibility}" Click="ConfirmPhone_Click" />
+                                            <Button Content="Rename" Style="{StaticResource GhostButton}"
+                                                    Padding="10,6" Margin="0,0,6,0" Tag="{Binding Id}"
+                                                    Click="RenamePhone_Click" />
+                                            <Button Content="Set primary" Style="{StaticResource GhostButton}"
+                                                    Padding="10,6" Margin="0,0,6,0" Tag="{Binding Id}"
+                                                    Visibility="{Binding NotPrimaryVisibility}" Click="PrimaryPhone_Click" />
+                                            <Button Content="Unset primary" Style="{StaticResource GhostButton}"
+                                                    Padding="10,6" Margin="0,0,6,0" Tag="{Binding Id}"
+                                                    Visibility="{Binding PrimaryVisibility}" Click="PrimaryPhone_Click" />
+                                            <Button Content="Remove" Style="{StaticResource DangerButton}"
+                                                    Padding="10,6" Tag="{Binding Id}" IsEnabled="{Binding NotPrimary}"
+                                                    Click="RemovePhone_Click" />
+                                        </WrapPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -298,6 +330,24 @@
                         <Button Grid.Column="2" Content="Remove" Style="{StaticResource DangerButton}" Padding="12,7"
                                 Margin="8,0,0,0" Click="RemoveKey_Click" />
                     </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- recovery password -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Recovery password" Style="{StaticResource H2}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="A master password that unlocks this PC locally if your linked devices are lost. Changing or clearing it needs a code from a linked device." />
+                    <TextBlock x:Name="MasterStatusText" FontSize="11" Margin="0,10,0,0" />
+                    <PasswordBox x:Name="MasterNewBox" Padding="10,9" Margin="0,10,0,0" />
+                    <PasswordBox x:Name="MasterConfirmBox" Padding="10,9" Margin="0,8,0,0" />
+                    <WrapPanel Margin="0,10,0,0">
+                        <Button Content="Save recovery password" Style="{StaticResource PrimaryButton}"
+                                Padding="14,8" Click="SaveMaster_Click" />
+                        <Button Content="Clear" Style="{StaticResource DangerButton}" Padding="14,8"
+                                Margin="8,0,0,0" Click="ClearMaster_Click" />
+                    </WrapPanel>
                 </StackPanel>
             </Border>
 

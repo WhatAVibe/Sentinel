@@ -23,6 +23,9 @@ public sealed class AgentHost : IDisposable
     public LocalApiServer Local { get; }
     public DateTime StartedAt { get; } = DateTime.UtcNow;
 
+    public int LinkedDevices { get; private set; }
+    public bool HasLinkedDevices => LinkedDevices > 0;
+
     public bool Away { get; private set; }
     public string AwayReason { get; private set; } = "";
     public DateTime? AwaySince { get; private set; }
@@ -96,6 +99,27 @@ public sealed class AgentHost : IDisposable
             });
         }
         Log.Write("info", "agent started", new { Config.DeviceId, paired = Config.Paired, version = AgentInfo.Version });
+        UiState.I.AgentVersion = $"agent v{AgentInfo.Version}";
+        _ = RefreshServerInfoAsync();
+    }
+
+    private async Task RefreshServerInfoAsync(CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(Config.ServerUrl))
+        {
+            UiState.Post(() => UiState.I.RelayVersion = "relay not configured");
+            return;
+        }
+        try
+        {
+            var health = await ApiClient.PingAsync(Config.ServerUrl, Config.AllowInsecureTls, ct).ConfigureAwait(false);
+            if (health != null)
+                UiState.Post(() => UiState.I.RelayVersion = $"relay v{health.Version}");
+        }
+        catch
+        {
+            UiState.Post(() => UiState.I.RelayVersion = "relay unreachable");
+        }
     }
 
     private void StartConnectors()
@@ -236,8 +260,13 @@ public sealed class AgentHost : IDisposable
         }
     }
 
+    private bool _inCommand;
+    private string _actorLabel = "PC";
+
     private void OnActivity(ActivityEventData evt)
     {
+        if (_inCommand && evt.Detail != null && !evt.Detail.ContainsKey("by"))
+            evt.Detail["by"] = _actorLabel;
         Runtime.Enqueue(evt);
         UiState.I.AddActivity(evt);
         lock (_eventLock)
@@ -289,11 +318,12 @@ public sealed class AgentHost : IDisposable
     public async Task<CommandOutcome> EnableAwayAsync(string reason)
     {
         if (Away) return new CommandOutcome(true, null, new { away = true, already = true });
+        if (!HasLinkedDevices) return new CommandOutcome(false, "no_linked_device");
         Log.Write("info", "away.enable.begin", new { reason });
         Away = true;
         AwayReason = reason;
         AwaySince = DateTime.UtcNow;
-        UiState.I.Away = true;
+        UiState.Post(() => UiState.I.Away = true);
         Monitor.Monitoring = true;
 
         string screenDetail = "disabled";
@@ -330,6 +360,7 @@ public sealed class AgentHost : IDisposable
             Log.Write("error", "away.notify", ex.Message);
         }
         Log.Write("info", "away.enable.done", new { });
+        UiState.I.UpdateFromDevice(BuildDeviceSnapshot());
         return new CommandOutcome(true, null, new { away = true, screensaver = screenDetail });
     }
 
@@ -343,7 +374,7 @@ public sealed class AgentHost : IDisposable
         Away = false;
         AwayReason = "";
         AwaySince = null;
-        UiState.I.Away = false;
+        UiState.Post(() => UiState.I.Away = false);
         StopAwayScreenshotTimer();
         Monitor.Monitoring = !Config.MonitorOnlyInAway;
         PowerActions.ScreenOn();
@@ -357,6 +388,7 @@ public sealed class AgentHost : IDisposable
         AwayChanged?.Invoke();
         await PostStateSafe();
         Notify("Away mode disabled", "Monitoring stopped, display restored.");
+        UiState.I.UpdateFromDevice(BuildDeviceSnapshot());
         return new CommandOutcome(true, null, new { away = false });
     }
 
@@ -412,6 +444,12 @@ public sealed class AgentHost : IDisposable
 
     public async Task<CommandOutcome> ExecuteCommandAsync(CommandEnvelope command, string source)
     {
+        if (RequiresLinkedDevice(command.Type) && !HasLinkedDevices)
+            return new CommandOutcome(false, "no_linked_device");
+        var previousActor = _actorLabel;
+        var previousInCommand = _inCommand;
+        _actorLabel = DescribeActor(source);
+        _inCommand = source != "desktop";
         var args = command.Args ?? new Dictionary<string, JsonElement>();
         string Arg(string key) => args.TryGetValue(key, out var el)
             ? (el.ValueKind == JsonValueKind.String ? el.GetString() ?? "" : el.ToString())
@@ -597,10 +635,31 @@ public sealed class AgentHost : IDisposable
             Log.Write("error", $"command {command.Type} failed", ex.Message);
             return new CommandOutcome(false, ex.Message);
         }
+        finally
+        {
+            _actorLabel = previousActor;
+            _inCommand = previousInCommand;
+        }
+    }
+
+    private static string DescribeActor(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source) || string.Equals(source, "desktop", StringComparison.OrdinalIgnoreCase))
+            return "PC";
+        var parts = source.Split(':', 3);
+        if (parts.Length == 3 && (parts[0] == "phone" || parts[0] == "watch"))
+            return $"{(parts[0] == "watch" ? "Watch" : "Phone")} · {parts[1]}";
+        if (string.Equals(source, "remote", StringComparison.OrdinalIgnoreCase)) return "Remote";
+        return source;
     }
 
     public Task<CommandOutcome> RunLocalAsync(string type, Dictionary<string, JsonElement>? args = null) =>
         ExecuteCommandAsync(new CommandEnvelope { Id = Guid.NewGuid().ToString("N"), Type = type, Args = args }, "desktop");
+
+    private static bool RequiresLinkedDevice(string type) => type is
+        "away_enable" or "lock_screen" or "shutdown" or "restart" or "sleep" or "hibernate" or "logoff";
+
+    public void SetLinkedDevices(int count) => LinkedDevices = count;
 
     private static bool SetClipboard(string text)
     {
@@ -773,7 +832,7 @@ public sealed class AgentHost : IDisposable
 
             if (kind == "fullscreen")
             {
-                var fullscreen = new FullscreenMessageWindow(title, body);
+                var fullscreen = new FullscreenMessageWindow(title, body, allowReply, messageId);
                 fullscreen.Closed += (_, _) =>
                 {
                     if (ReferenceEquals(_fullscreenMessage, fullscreen)) _fullscreenMessage = null;
@@ -798,6 +857,11 @@ public sealed class AgentHost : IDisposable
 
     public void EnterSecureLock(string message)
     {
+        if (!HasLinkedDevices)
+        {
+            Notify("Link a device first", "Secure lock needs a linked phone or watch so it can be unlocked. Pair one from Settings.");
+            return;
+        }
         SecureLock.Activate(message);
         OnActivity(new ActivityEventData
         {
@@ -957,7 +1021,40 @@ public sealed class AgentHost : IDisposable
         _localPairCodeExpiry = DateTime.MinValue;
     }
 
-    public bool VerifyCode(string? code) => Totp.Verify(Config.TotpSecret, code);
+    public bool VerifyCode(string? code) =>
+        Totp.Verify(Config.TotpSecret, code) || MasterPassword.Verify(Config, code);
+
+    public bool HasMasterPassword => MasterPassword.IsSet(Config);
+
+    public bool SetMasterPassword(string password)
+    {
+        if (password.Length < 8) return false;
+        MasterPassword.Set(Config, password);
+        SaveConfig();
+        OnActivity(new ActivityEventData
+        {
+            Category = "security",
+            Severity = "warning",
+            Title = "Recovery password set",
+            Detail = new() { ["source"] = "desktop" }
+        });
+        return true;
+    }
+
+    public bool ClearMasterPassword()
+    {
+        if (!HasMasterPassword) return false;
+        MasterPassword.Clear(Config);
+        SaveConfig();
+        OnActivity(new ActivityEventData
+        {
+            Category = "security",
+            Severity = "warning",
+            Title = "Recovery password cleared",
+            Detail = new() { ["source"] = "desktop" }
+        });
+        return true;
+    }
 
     public bool CanDisarm(out string reason)
     {
@@ -990,14 +1087,15 @@ public sealed class AgentHost : IDisposable
                 .Take(120);
             foreach (var file in files)
             {
+                var size = ScreenCapture.ImageSize(file.FullName);
                 var item = new ShotItem
                 {
                     Path = file.FullName,
                     CapturedAt = file.LastWriteTime,
                     Monitor = 0,
                     MonitorName = "Local capture",
-                    Width = 0,
-                    Height = 0,
+                    Width = size.Width,
+                    Height = size.Height,
                     Trigger = "local"
                 };
                 UiState.I.Shots.Add(item);

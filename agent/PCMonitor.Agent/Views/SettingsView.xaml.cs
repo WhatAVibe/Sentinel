@@ -21,7 +21,11 @@ public partial class SettingsView : UserControl
         DataContext = UiState.I;
         PhonesList.ItemsSource = _phones;
         Loaded += OnLoaded;
-        Unloaded += (_, _) => _statusTimer.Stop();
+        Unloaded += (_, _) =>
+        {
+            _statusTimer.Stop();
+            ServerBox.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 6 };
+        };
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _statusTimer.Tick += (_, _) => RefreshLiveStatus();
     }
@@ -80,7 +84,8 @@ public partial class SettingsView : UserControl
         SecurityKeyText.Text = link == null
             ? (SecurityKey.Available ? "No key linked" : "This Windows build has no WebAuthn API")
             : $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
-        AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version} · protocol {AgentInfo.Protocol}";
+        AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version}";
+        UpdateMasterStatus();
 
         StartupCheck.IsChecked = StartupManager.IsEnabled();
         TrayCheck.IsChecked = cfg.MinimizeToTray;
@@ -248,21 +253,113 @@ public partial class SettingsView : UserControl
     {
         if (sender is not Button button || button.Tag is not string id) return;
         var dialog = new CodePromptWindow(
-            "Authorize phone removal",
-            "Removing a phone revokes its access immediately. Enter your 2FA code.",
+            "Authorize device removal",
+            "Removing a device revokes its access immediately. Enter your 2FA code.",
             App.Host) { Owner = Window.GetWindow(this) };
         if (dialog.ShowDialog() != true) return;
-        if (MessageBox.Show("Remove this phone from the PC?", "Linked phones", MessageBoxButton.YesNo,
+        if (MessageBox.Show("Remove this device from the PC?", "Linked devices", MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
             await App.Host.Api.RemovePhoneAsync(id, CancellationToken.None);
             await LoadPhonesAsync();
         }
+        catch (ApiException ex) when (ex.Code == "primary_device")
+        {
+            MessageBox.Show("This is the primary device. Unset primary on this PC before removing it.",
+                "Linked devices", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Remove phone", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ex.Message, "Remove device", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private async void ConfirmPhone_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string id) return;
+        var dialog = new CodePromptWindow(
+            "Confirm linked device",
+            "Enter the 6-digit code shown on the new device. Nothing can be triggered until it is confirmed.",
+            App.Host) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            await App.Host.Api.ConfirmPhoneAsync(id, dialog.Code, CancellationToken.None);
+            await LoadPhonesAsync();
+            ServerStatus.Text = "Device confirmed.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Confirm device", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void RenamePhone_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string id) return;
+        var phone = _phones.FirstOrDefault(p => p.Id == id);
+        var name = PromptText(Window.GetWindow(this), "Rename device", "Device name", phone?.Name ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        try
+        {
+            await App.Host.Api.RenamePhoneAsync(id, name.Trim(), CancellationToken.None);
+            await LoadPhonesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Rename device", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void PrimaryPhone_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string id) return;
+        var phone = _phones.FirstOrDefault(p => p.Id == id);
+        if (phone == null) return;
+        var makePrimary = !phone.Primary;
+        if (makePrimary && MessageBox.Show(
+                "A primary device cannot be unlinked by anything until you unset primary on this PC. Continue?",
+                "Primary device", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            await App.Host.Api.SetPrimaryPhoneAsync(id, makePrimary, CancellationToken.None);
+            await LoadPhonesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Primary device", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static string? PromptText(Window? owner, string title, string label, string initial)
+    {
+        var window = new Window
+        {
+            Title = title,
+            Width = 430,
+            Height = 190,
+            Owner = owner,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            Background = (System.Windows.Media.Brush)Application.Current.Resources["Bg"]
+        };
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        panel.Children.Add(new TextBlock { Text = label, FontSize = 12, Margin = new Thickness(0, 0, 0, 8) });
+        var box = new TextBox { Text = initial, Padding = new Thickness(10, 8, 10, 8) };
+        panel.Children.Add(box);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
+        var cancel = new Button { Content = "Cancel", Padding = new Thickness(14, 7, 14, 7), Margin = new Thickness(0, 0, 8, 0), Style = (Style)Application.Current.Resources["GhostButton"] };
+        var save = new Button { Content = "Save", Padding = new Thickness(16, 7, 16, 7), Style = (Style)Application.Current.Resources["PrimaryButton"] };
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(save);
+        panel.Children.Add(buttons);
+        window.Content = panel;
+        string? result = null;
+        save.Click += (_, _) => { result = box.Text; window.DialogResult = true; };
+        cancel.Click += (_, _) => window.DialogResult = false;
+        window.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
+        return window.ShowDialog() == true ? result : null;
     }
 
     private void AdbPath_LostFocus(object sender, RoutedEventArgs e)
@@ -315,7 +412,7 @@ public partial class SettingsView : UserControl
             var health = await ApiClient.PingAsync(url, InsecureCheck.IsChecked == true, CancellationToken.None);
             ServerStatus.Text = health == null
                 ? "No response."
-                : $"Connected to {health.Name} v{health.Version} · {health.PublicUrl}";
+                : $"Connected to {health.Name} · relay v{health.Version}";
         }
         catch (Exception ex)
         {
@@ -333,8 +430,7 @@ public partial class SettingsView : UserControl
         new PhoneLinkWindow { Owner = Window.GetWindow(this) }.ShowDialog();
     }
 
-    private void Unpair_Click(object sender, RoutedEventArgs e)
-    {
+    private async void Unpair_Click(object sender, RoutedEventArgs e)    {
         if (App.Host.Config.Paired)
         {
             var dialog = new CodePromptWindow(
@@ -344,8 +440,16 @@ public partial class SettingsView : UserControl
             if (dialog.ShowDialog() != true) return;
         }
 
-        if (MessageBox.Show("Remove the pairing from this PC? You will need to pair again.", "Unpair",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show("Remove the pairing from this PC and erase all relay data for it? Every linked device will be signed out.",
+                "Unpair", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            await App.Host.Api.PurgeDeviceAsync(CancellationToken.None);
+        }
+        catch
+        {
+            // offline: still clear locally
+        }
         App.Host.Unpair();
         LoadFromConfig();
         RefreshLiveStatus();
@@ -416,6 +520,11 @@ public partial class SettingsView : UserControl
         DirectCodeText.Text = App.Host.EnsureLocalPairCode();
     }
 
+    private void ServerBox_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        ServerBox.Effect = null;
+    }
+
     private async Task RefreshRelayVersionAsync()
     {
         var cfg = App.Host.Config;
@@ -473,6 +582,58 @@ public partial class SettingsView : UserControl
         SecurityKeyText.Text = "No key linked";
     }
 
+    private void SaveMaster_Click(object sender, RoutedEventArgs e)
+    {
+        var password = MasterNewBox.Password;
+        if (password.Length < 8)
+        {
+            MessageBox.Show("Use at least 8 characters.", "Recovery password",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (password != MasterConfirmBox.Password)
+        {
+            MessageBox.Show("The two passwords do not match.", "Recovery password",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new CodePromptWindow(
+            "Authorize recovery password",
+            "Confirm with your 2FA code or current recovery password.",
+            App.Host) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return;
+        App.Host.SetMasterPassword(password);
+        MasterNewBox.Clear();
+        MasterConfirmBox.Clear();
+        UpdateMasterStatus();
+        ServerStatus.Text = "Recovery password saved.";
+    }
+
+    private void ClearMaster_Click(object sender, RoutedEventArgs e)
+    {
+        if (!App.Host.HasMasterPassword) return;
+        if (MessageBox.Show("Remove the recovery password? A lost device would then leave this PC locked.",
+                "Recovery password", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var dialog = new CodePromptWindow(
+            "Authorize clearing the recovery password",
+            "Confirm with your 2FA code or the current recovery password.",
+            App.Host) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return;
+        App.Host.ClearMasterPassword();
+        UpdateMasterStatus();
+        ServerStatus.Text = "Recovery password cleared.";
+    }
+
+    private void UpdateMasterStatus()
+    {
+        if (MasterStatusText == null) return;
+        MasterStatusText.Text = App.Host.HasMasterPassword
+            ? "Set — unlocks secure lock, exit and unpair locally."
+            : "Not set — only linked devices can unlock this PC.";
+        MasterStatusText.Foreground = (System.Windows.Media.Brush)FindResource(
+            App.Host.HasMasterPassword ? "Success" : "Muted");
+    }
+
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.Root);
     private void OpenLogs_Click(object sender, RoutedEventArgs e) => Open(App.Host.Store.LogsDir);
 
@@ -489,9 +650,8 @@ public partial class SettingsView : UserControl
 
         var status = host.Runtime.Status;
         ServerStatus.Text = cfg.Paired
-            ? $"{(string.IsNullOrEmpty(cfg.ServerUrl) ? "no server" : cfg.ServerUrl)} · {status}" +
-              (string.IsNullOrEmpty(host.Runtime.LastError) ? "" : $" · {host.Runtime.LastError}")
-            : "Not paired. Enter the server address and pair from your phone.";
+            ? status + (string.IsNullOrEmpty(host.Runtime.LastError) ? "" : $" · {host.Runtime.LastError}")
+            : "Not paired. Enter the server address and pair from your device.";
 
         var adb = host.Adb;
         var devices = adb.Devices.Count == 0

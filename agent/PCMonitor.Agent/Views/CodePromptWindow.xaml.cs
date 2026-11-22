@@ -28,6 +28,7 @@ public partial class CodePromptWindow : Window
         KeyButton.Visibility = SecurityKey.Current(App.Host.Config) == null
             ? Visibility.Collapsed
             : Visibility.Visible;
+        MasterPanel.Visibility = host.HasMasterPassword ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public string Code => CodeBox.Text.Trim().Replace(" ", "");
@@ -60,6 +61,24 @@ public partial class CodePromptWindow : Window
     {
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
+    }
+
+    private void MasterVerify_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_host.VerifyCode(MasterBox.Password))
+        {
+            ShowError("That recovery password is not correct.");
+            MasterBox.SelectAll();
+            MasterBox.Focus();
+            return;
+        }
+        if (_host.Config.RequirePhonePresence && !_host.Adb.TrustedPresent)
+        {
+            ShowError("Phone presence is required. Connect your phone over ADB first.");
+            return;
+        }
+        DialogResult = true;
+        Close();
     }
 
     private async void Key_Click(object sender, RoutedEventArgs e)

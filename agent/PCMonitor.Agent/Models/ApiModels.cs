@@ -90,6 +90,7 @@ public sealed class DeviceDto
     [JsonPropertyName("metrics")] public MetricsDto Metrics { get; set; } = new();
     [JsonPropertyName("relay")] public bool Relay { get; set; }
     [JsonPropertyName("agent_version")] public string? AgentVersion { get; set; }
+    [JsonPropertyName("linked_devices")] public int LinkedDevices { get; set; }
     [JsonPropertyName("totp_secret")] public string? TotpSecret { get; set; }
 }
 
@@ -98,6 +99,7 @@ public sealed class CommandEnvelope
     [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("type")] public string Type { get; set; } = "";
     [JsonPropertyName("args")] public Dictionary<string, JsonElement>? Args { get; set; }
+    [JsonPropertyName("source")] public string? Source { get; set; }
     [JsonPropertyName("created_at")] public long CreatedAt { get; set; }
 }
 
@@ -140,12 +142,13 @@ public sealed class PairApproveResponse
 }
 
 public sealed class PhoneDto
-{
-    [JsonPropertyName("id")] public string Id { get; set; } = "";
+{    [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("name")] public string Name { get; set; } = "Phone";
     [JsonPropertyName("created_at")] public long CreatedAt { get; set; }
     [JsonPropertyName("last_seen")] public long? LastSeen { get; set; }
     [JsonPropertyName("current")] public bool Current { get; set; }
+    [JsonPropertyName("primary")] public bool Primary { get; set; }
+    [JsonPropertyName("confirmed")] public bool Confirmed { get; set; } = true;
 
     [JsonIgnore] public string CreatedText => CreatedAt == 0
         ? "—"
@@ -156,6 +159,13 @@ public sealed class PhoneDto
         : DateTimeOffset.FromUnixTimeMilliseconds(LastSeen.Value).LocalDateTime.ToString("dd MMM HH:mm");
 
     [JsonIgnore] public string Badge => Current ? "THIS PHONE" : "LINKED";
+    [JsonIgnore] public System.Windows.Visibility ConfirmVisibility =>
+        Confirmed ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+    [JsonIgnore] public System.Windows.Visibility PrimaryVisibility =>
+        Primary ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    [JsonIgnore] public System.Windows.Visibility NotPrimaryVisibility =>
+        Primary ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+    [JsonIgnore] public bool NotPrimary => !Primary;
 }
 
 public sealed class PhoneList
@@ -190,4 +200,20 @@ public sealed class CaptureResult
     public int Height { get; init; }
     public string Trigger { get; init; } = "manual";
     public DateTime CapturedAt { get; init; } = DateTime.Now;
+}
+
+public sealed class AgentEventDto
+{
+    [JsonPropertyName("id")] public long Id { get; set; }
+    [JsonPropertyName("ts")] public long Ts { get; set; }
+    [JsonPropertyName("category")] public string Category { get; set; } = "system";
+    [JsonPropertyName("severity")] public string Severity { get; set; } = "info";
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("detail")] public Dictionary<string, JsonElement>? Detail { get; set; }
+}
+
+public sealed class AgentEventsResponse
+{
+    [JsonPropertyName("events")] public List<AgentEventDto> Events { get; set; } = new();
+    [JsonPropertyName("has_more")] public bool HasMore { get; set; }
 }

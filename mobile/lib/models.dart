@@ -424,6 +424,12 @@ class ApiError implements Exception {  final int status;
         return 'A capture is already running.';
       case 'unsupported_command':
         return 'Update the PC agent to use this feature.';
+      case 'pending_confirmation':
+        return 'Confirm this device on the PC with the 6-digit code shown here.';
+      case 'primary_device':
+        return 'This is the primary device. Unset primary on the PC first.';
+      case 'no_linked_device':
+        return 'Link a device first: 2FA actions are disabled without one.';
       case 'clipboard_failed':
       case 'missing_text':
         return 'The PC could not replace its clipboard.';

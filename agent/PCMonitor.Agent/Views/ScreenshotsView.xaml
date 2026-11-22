@@ -19,6 +19,8 @@
                 </Border>
                 <Button x:Name="CaptureButton" Content="Capture now" Style="{StaticResource PrimaryButton}"
                         Padding="14,8" Margin="0,0,8,0" Click="Capture_Click" />
+                <Button Content="Purge from relay" Style="{StaticResource DangerButton}" Padding="14,8"
+                        Margin="0,0,8,0" Click="PurgeRelay_Click" />
                 <Button Content="Open folder" Style="{StaticResource GhostButton}" Padding="14,8" Click="Folder_Click" />
             </StackPanel>
         </Grid>

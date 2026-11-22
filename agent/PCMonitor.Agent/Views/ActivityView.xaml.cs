@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using PCMonitor.Agent.Models;
 using PCMonitor.Agent.Services;
 
 namespace PCMonitor.Agent.Views;
@@ -23,6 +25,7 @@ public partial class ActivityView : UserControl
     };
 
     private readonly ObservableCollection<ActivityItem> _filtered = new();
+    private readonly List<ActivityItem> _history = new();
     private readonly List<Button> _chips = new();
     private readonly DispatcherTimer _refreshTimer;
     private string _filter = "all";
@@ -61,8 +64,47 @@ public partial class ActivityView : UserControl
         {
             UpdateChips();
             Rebuild();
+            _ = LoadHistoryAsync();
         };
         Unloaded += (_, _) => UiState.I.Activity.CollectionChanged -= Activity_CollectionChanged;
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        if (!App.Host.Config.Paired) return;
+        try
+        {
+            var page = await App.Host.Api.GetEventsAsync(0, 400, CancellationToken.None);
+            _history.Clear();
+            foreach (var evt in page.Events)
+                _history.Add(ToItem(evt));
+            Rebuild();
+        }
+        catch
+        {
+            // offline; live events still show
+        }
+    }
+
+    private static ActivityItem ToItem(AgentEventDto evt)
+    {
+        var detail = "";
+        if (evt.Detail is { Count: > 0 })
+        {
+            detail = string.Join("  ·  ", evt.Detail
+                .Where(kv => kv.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+                .Select(kv => $"{kv.Key}: {kv.Value}"));
+        }
+        return new ActivityItem
+        {
+            Id = evt.Id,
+            Time = DateTimeOffset.FromUnixTimeMilliseconds(evt.Ts).LocalDateTime,
+            Category = evt.Category,
+            Severity = evt.Severity,
+            Title = evt.Title,
+            DetailText = detail,
+            Accent = UiState.CategoryBrush(evt.Category)
+        };
     }
 
     private void Activity_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -92,9 +134,16 @@ public partial class ActivityView : UserControl
 
     private void Rebuild()
     {
-        var snapshot = UiState.I.Activity.Take(600).Where(Matches).ToList();
+        var live = UiState.I.Activity.ToList();
+        var known = _history.Select(h => $"{h.Time.Ticks}|{h.Title}").ToHashSet();
+        var merged = _history
+            .Concat(live.Where(item => !known.Contains($"{item.Time.Ticks}|{item.Title}")))
+            .OrderByDescending(item => item.Time)
+            .Where(Matches)
+            .Take(600)
+            .ToList();
         _filtered.Clear();
-        foreach (var item in snapshot) _filtered.Add(item);
+        foreach (var item in merged) _filtered.Add(item);
         EmptyState.Visibility = _filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 

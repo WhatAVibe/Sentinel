@@ -77,6 +77,8 @@ public sealed class UiState : INotifyPropertyChanged
     private string _lastSeen = "never";
     private int _shotCount;
     private int _eventCount;
+    private string _agentVersion = "agent v" + AgentInfo.Version;
+    private string _relayVersion = "relay unknown";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -100,6 +102,9 @@ public sealed class UiState : INotifyPropertyChanged
     public string LastSeen { get => _lastSeen; set => Set(ref _lastSeen, value); }
     public int ShotCount { get => _shotCount; set => Set(ref _shotCount, value, nameof(ShotCount), nameof(EmptyShotsVisibility), nameof(ShotsVisibility)); }
     public int EventCount { get => _eventCount; set => Set(ref _eventCount, value, nameof(EventCount), nameof(EmptyActivityVisibility)); }
+
+    public string AgentVersion { get => _agentVersion; set => Set(ref _agentVersion, value); }
+    public string RelayVersion { get => _relayVersion; set => Set(ref _relayVersion, value); }
 
     public string AwayText => Away ? "Away mode active" : "Monitoring idle";
     public Visibility AwayVisibility => Away ? Visibility.Visible : Visibility.Collapsed;

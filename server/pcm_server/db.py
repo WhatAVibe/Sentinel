@@ -218,6 +218,10 @@ class Database:
                 device_columns = [row[1] for row in conn.execute("PRAGMA table_info(devices)")]
                 if "offline_alerted" not in device_columns:
                     conn.execute("ALTER TABLE devices ADD COLUMN offline_alerted INTEGER NOT NULL DEFAULT 0")
+                if "is_primary" not in columns:
+                    conn.execute("ALTER TABLE mobiles ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0")
+                if "confirmed" not in columns:
+                    conn.execute("ALTER TABLE mobiles ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 1")
                 conn.commit()
         finally:
             conn.close()
