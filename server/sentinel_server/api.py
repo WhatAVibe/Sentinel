@@ -456,6 +456,9 @@ def pair_approve():
     mobile_token = new_token()
     mobile_uid = (body.get("mobile_uid") or "").strip()[:64]
     mobile_name = (body.get("mobile_name") or "Phone")[:64]
+    app_version = (request.headers.get("X-App-Version") or "").strip()[:32]
+    ua = request.headers.get("User-Agent") or ""
+    kind = "watch" if "SentinelWatch" in ua else "phone"
     existing = None
     if mobile_uid:
         existing = db().one(
@@ -474,14 +477,17 @@ def pair_approve():
     if existing:
         mid = existing["id"]
         db().execute(
-            "UPDATE mobiles SET name = ?, token_hash = ?, last_seen = ?, confirmed = 0 WHERE id = ?",
-            (mobile_name, hash_token(mobile_token), now_ms(), mid),
+            "UPDATE mobiles SET name = ?, token_hash = ?, last_seen = ?, confirmed = 0, "
+            "app_version = ?, kind = ? WHERE id = ?",
+            (mobile_name, hash_token(mobile_token), now_ms(), app_version or None, kind, mid),
         )
     else:
         mid = uuid.uuid4().hex
         db().execute(
-            "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, uid, confirmed) VALUES (?,?,?,?,?,?,0)",
-            (mid, mobile_name, device["id"], hash_token(mobile_token), now_ms(), mobile_uid or None),
+            "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, uid, confirmed, "
+            "app_version, kind) VALUES (?,?,?,?,?,?,0,?,?)",
+            (mid, mobile_name, device["id"], hash_token(mobile_token), now_ms(), mobile_uid or None,
+             app_version or None, kind),
         )
     db().execute("UPDATE pair_requests SET status='approved' WHERE id=?", (rid,))
     db().audit("mobile", "pair.approved", {"request": rid, "device": device["id"]})

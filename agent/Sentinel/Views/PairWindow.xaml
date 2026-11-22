@@ -55,6 +55,21 @@
                 <TextBlock Text="The phone must be on the same network as this PC, or the server must be reachable over the internet."
                            Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap"
                            Margin="0,10,0,0" MaxWidth="360" />
+                <StackPanel x:Name="ConfirmPanel" Margin="0,14,0,0" Visibility="Collapsed"
+                            HorizontalAlignment="Center">
+                    <TextBlock x:Name="ConfirmTitle" Text="Enter the 6-digit code shown on the device"
+                               FontSize="12" Foreground="{StaticResource Text}" HorizontalAlignment="Center" />
+                    <TextBox x:Name="ConfirmBox" FontFamily="Consolas" FontSize="26" Padding="12,8"
+                             TextAlignment="Center" MaxLength="6" Width="220" Margin="0,8,0,0"
+                             Background="#0E1218" Foreground="{StaticResource Text}"
+                             BorderBrush="{StaticResource Line}" BorderThickness="1"
+                             TextChanged="ConfirmBox_TextChanged" />
+                    <TextBlock x:Name="ConfirmError" Foreground="{StaticResource Danger}" FontSize="11"
+                               Margin="0,6,0,0" Visibility="Collapsed" TextAlignment="Center"
+                               TextWrapping="Wrap" MaxWidth="340" />
+                    <Button x:Name="ConfirmButton" Content="Confirm device" Style="{StaticResource PrimaryButton}"
+                            Margin="0,10,0,0" Padding="18,9" Click="Confirm_Click" />
+                </StackPanel>
             </StackPanel>
         </Border>
 

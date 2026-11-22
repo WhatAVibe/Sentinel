@@ -13,9 +13,13 @@ public partial class PairWindow : Window
     private ApiClient? _client;
     private PairRequestResponse? _request;
     private DispatcherTimer? _timer;
+    private DispatcherTimer? _confirmTimer;
     private string _serverUrl = "";
     private bool _polling;
     private long _expiresAt;
+    private string _pendingId = "";
+    private bool _confirmBusy;
+    private bool _finished;
 
     public PairWindow()
     {
@@ -113,6 +117,8 @@ public partial class PairWindow : Window
     {
         _timer?.Stop();
         _timer = null;
+        _confirmTimer?.Stop();
+        _confirmTimer = null;
     }
 
     private async void Poll(object? sender, EventArgs e)
@@ -134,10 +140,10 @@ public partial class PairWindow : Window
                 App.Host.Config.AllowInsecureTls = InsecureCheck.IsChecked == true;
                 App.Host.SaveConfig();
                 App.Host.ApplyPairing(status.DeviceId ?? "", status.AgentToken, status.TotpSecret ?? "");
-                StatusText.Text = "Paired successfully.";
+                App.Host.Api.BaseUrl = _serverUrl;
+                App.Host.Api.Token = status.AgentToken;
                 App.Tray.Update();
-                DialogResult = true;
-                Close();
+                BeginConfirm();
             }
             else if (status.Status is "expired" or "denied" or "claimed")
             {
@@ -155,6 +161,94 @@ public partial class PairWindow : Window
         {
             _polling = false;
         }
+    }
+
+    private void BeginConfirm()
+    {
+        ConfirmPanel.Visibility = Visibility.Visible;
+        ConfirmTitle.Text = "Enter the 6-digit code shown on the device";
+        StatusText.Text = "This PC is paired. Confirm the device to finish.";
+        CountdownText.Text = "Waiting for the device…";
+        Activate();
+        _confirmTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _confirmTimer.Tick += ConfirmPoll;
+        _confirmTimer.Start();
+    }
+
+    private async void ConfirmPoll(object? sender, EventArgs e)
+    {
+        if (_confirmBusy || _pendingId.Length > 0) return;
+        _confirmBusy = true;
+        try
+        {
+            var phones = await App.Host.Api.GetPhonesAsync(CancellationToken.None);
+            var pending = phones.FirstOrDefault(p => !p.Confirmed);
+            if (pending != null)
+            {
+                _pendingId = pending.Id;
+                _confirmTimer?.Stop();
+                ConfirmTitle.Text = $"Enter the 6-digit code shown on {pending.Name}";
+                CountdownText.Text = "Nothing can be triggered until you confirm it here.";
+                ConfirmBox.Focus();
+            }
+        }
+        catch
+        {
+            // retry on the next tick
+        }
+        finally
+        {
+            _confirmBusy = false;
+        }
+    }
+
+    private async void Confirm_Click(object sender, RoutedEventArgs e) => await SubmitConfirmAsync();
+
+    private async void ConfirmBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (ConfirmBox.Text.Length == 6) await SubmitConfirmAsync();
+    }
+
+    private async Task SubmitConfirmAsync()
+    {
+        if (_confirmBusy || _finished || _pendingId.Length == 0) return;
+        var code = ConfirmBox.Text.Trim();
+        if (code.Length != 6)
+        {
+            ShowConfirmError("Enter the six digits shown on the device.");
+            return;
+        }
+        _confirmBusy = true;
+        ConfirmButton.IsEnabled = false;
+        try
+        {
+            await App.Host.Api.ConfirmPhoneAsync(_pendingId, code, CancellationToken.None);
+            _finished = true;
+            _confirmTimer?.Stop();
+            ConfirmError.Visibility = Visibility.Collapsed;
+            StatusText.Text = "Paired and confirmed.";
+            DialogResult = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            ShowConfirmError(ex is ApiException api && api.Code == "bad_code"
+                ? "That code is not correct. Check the device and try again."
+                : ex.Message);
+            ConfirmBox.SelectAll();
+            ConfirmBox.Focus();
+        }
+        finally
+        {
+            _confirmBusy = false;
+            ConfirmButton.IsEnabled = true;
+        }
+    }
+
+    private void ShowConfirmError(string message)
+    {
+        ConfirmError.Text = message;
+        ConfirmError.Visibility = Visibility.Visible;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

@@ -148,8 +148,9 @@ normal path such as `Documents\GitHub\Sentinel` can use `flutter` directly.
 
 1. PC: pairing window → server URL → **Connect**. A QR code and 6-character code appear.
 2. Phone: **Scan QR**, or **Code** → enter the server URL and the code.
-3. On approval the PC flips to **Live** and the phone opens the dashboard.
-4. Extra phone: PC *Settings → Pair another phone*.
+3. On approval the PC asks for the 6-digit code shown on the phone; entering it confirms the device automatically.
+4. Extra phone: PC *Settings → Pair another phone*. The window watches for the approval and asks for the
+   code as soon as the device approves, then closes itself once it is confirmed.
 
 ## 5. ADB direct link (optional)
 

@@ -554,7 +554,12 @@ class Pairer {
   ) async {
     final response = await client
         .post(Uri.parse('$base$path'),
-            headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+            headers: {
+              'Content-Type': 'application/json',
+              'X-App-Version': sentinelAppVersion,
+              'User-Agent': 'SentinelPhone/$sentinelAppVersion',
+            },
+            body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
     Map<String, dynamic>? decoded;
     try {
