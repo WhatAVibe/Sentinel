@@ -79,7 +79,10 @@ Keep the watch on the charger with wireless debugging open; Wi-Fi sleeps and the
 
 1. PC -> Settings -> Pair another phone (shows a 6-character code).
 2. Watch -> enter your relay URL (for example `https://sentinel.example.com`) and the code.
-3. The watch appears in Linked phones as "Watch".
+3. The watch shows **Waiting for your PC** with its live 6-digit code and checks the relay every 4 seconds.
+   Type that code in the PC prompt (or confirm later in Linked devices); the watch opens the home screen as
+   soon as the relay reports the confirmation.
+4. The watch appears in Linked phones as "Watch" and reports its app version automatically.
 
 The watch stores its token and TOTP secret in app-private storage. Protect it with the watch's
 screen lock; remove it from Linked phones if lost.

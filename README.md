@@ -28,6 +28,28 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 
 ---
 
+## Download
+
+Everything ships from **[Releases](https://github.com/WhatAVibe/Sentinel/releases/latest)**. The builds are
+unsigned; Windows SmartScreen will ask you to confirm the publisher.
+
+| Platform | File | Notes |
+|---|---|---|
+| **Windows 10/11 x64** | [Sentinel-Setup-2.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.0.exe) | Installer with the self-contained agent 1.6.0, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
+| Windows (agent only) | [Sentinel-Agent-1.6.0-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-1.6.0-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
+| **Android 8.0+** | [Sentinel-Phone-1.5.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.5.1.apk) | Flutter phone app |
+| Wear OS 3+ (API 30) | [Sentinel-Watch-1.3.4.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-1.3.4.apk) | Companion watch app, four tiles and complications |
+| Relay server | [Sentinel-Relay-1.3.2.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-1.3.2.zip) | Flask + SQLite relay source; Python 3.10+ |
+| Flipper Zero | [Sentinel-Flipper-1.1.0.fap](https://github.com/WhatAVibe/Sentinel/releases/download/flipper-v1.1.0/Sentinel-Flipper-1.1.0.fap) | Separate `flipper-v1.1.0` release (BLE bridge) |
+| Checksums | [SHA256SUMS.txt](https://github.com/WhatAVibe/Sentinel/releases/latest/download/SHA256SUMS.txt) | Verify with `sha256sum -c SHA256SUMS.txt` |
+
+Install the phone app with `adb install -r Sentinel-Phone-1.5.1.apk`, or open the APK on the phone. The watch
+app goes over Wireless debugging: `adb connect <watch-ip>:<port>` then `adb install -r
+Sentinel-Watch-1.3.4.apk`. The relay is a plain folder — unzip it and follow
+[Quick start](#1-relay-server) below.
+
+---
+
 ## Why Sentinel
 
 Windows has Remote Desktop. It doesn't give you a live 2FA-gated lock screen, a screenshot trail of who used
@@ -237,6 +259,12 @@ Open `http://<server>:8765/` for a status page. The API lives at `/api/v1`.
 
 ### 2. Windows agent
 
+Run **[Sentinel-Setup-2.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.0.exe)**
+and follow the wizard: terms, install location, recovery password, relay address, pairing. Re-running the
+setup offers **Update / Repair** or **Uninstall**.
+
+Building it yourself:
+
 ```powershell
 cd agent
 dotnet build Sentinel.sln -c Release
@@ -276,6 +304,9 @@ Useful flags:
 
 ### 3. Phone app
 
+Install **[Sentinel-Phone-1.5.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.5.1.apk)**
+(Android 8.0+), or build it:
+
 ```powershell
 cd mobile
 flutter pub get
@@ -290,12 +321,19 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 
 1. PC: the pairing window shows a QR code and a 6-character code.
 2. Phone: **Scan QR**, or **Code** → enter the relay URL and the code.
-3. Approve on the PC. Both sides store tokens and share the TOTP secret.
-4. More phones later: PC → **Settings → Pair another phone**.
-5. More PCs later: tap the PC name at the top of the phone app → **Pair another PC**. Use the pencil icon
+3. As soon as the phone approves, the PC swaps the QR for a **6-digit confirmation prompt**. Type the live
+   code shown on the phone; nothing on the phone works until this step. The window closes itself when it is
+   correct.
+4. No pairing window open? The agent opens the confirmation dialog automatically when a device approves.
+   You can also confirm later in **Settings → Linked devices**.
+5. More phones later: PC → **Settings → Pair another phone**.
+6. More PCs later: tap the PC name at the top of the phone app → **Pair another PC**. Use the pencil icon
    to give each one a local name.
 
 ### 5. Wear OS app (optional)
+
+Install **[Sentinel-Watch-1.3.4.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-1.3.4.apk)**,
+or build it:
 
 ```powershell
 cd watch
@@ -305,8 +343,9 @@ adb connect <watch-ip>:<port>
 adb -s <watch-ip>:<port> install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-Then open **Sentinel** on the watch, enter the relay URL and a pairing code from the PC. Add the tiles from
-the watch's tile carousel. Details: [watch/README.md](watch/README.md).
+Then open **Sentinel** on the watch, enter the relay URL and a pairing code from the PC. The watch shows its
+own **waiting for your PC** screen with the 6-digit code while the link is pending. Add the tiles from the
+watch's tile carousel. Details: [watch/README.md](watch/README.md).
 
 ### 6. Flipper Zero (optional)
 
@@ -488,6 +527,7 @@ Common relay keys:
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
+| [CHANGELOG.md](CHANGELOG.md) | Release history and upgrade notes |
 | [flipper/README.md](flipper/README.md) | Flipper build, BLE setup, line protocol, WiFi board |
 | [watch/README.md](watch/README.md) | Watch build, install, tiles, config |
 

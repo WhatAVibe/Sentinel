@@ -1,5 +1,21 @@
 # Setup guide
 
+## 0. Get the binaries
+
+Every component is published on **[Releases](https://github.com/WhatAVibe/Sentinel/releases/latest)**:
+
+| Component | Asset |
+|---|---|
+| Windows agent + installer | `Sentinel-Setup-2.1.0.exe` |
+| Windows agent only | `Sentinel-Agent-1.6.0-win-x64.exe` |
+| Phone (Android 8+) | `Sentinel-Phone-1.5.1.apk` |
+| Wear OS 3+ | `Sentinel-Watch-1.3.4.apk` |
+| Relay | `Sentinel-Relay-1.3.2.zip` |
+| Checksums | `SHA256SUMS.txt` |
+
+The relay is the only piece that has to be reachable from the internet; the PC and phone connect outbound
+to it. Build from source only if you are changing something — the steps below cover both paths.
+
 ## 1. Relay server
 
 ### Windows (home server / always-on PC)

@@ -35,14 +35,37 @@ welcome.
   README).
 - If you change a version, bump it in the component's source and update the version table in the README.
 
+## Releasing
+
+1. Bump the component versions (`AgentInfo.cs`, `config.py`, `pubspec.yaml` + `models.dart`,
+   `watch/app/build.gradle.kts` + `Api.kt`, installer `.csproj`, `flipper/application.fam`).
+2. Update the version table in `README.md`, `CHANGELOG.md` and any asset names in the docs.
+3. Build everything: `installer\build.ps1`, `flutter build apk --release`,
+   `gradlew :app:assembleDebug`.
+4. Tag `v<installer version>` and publish a GitHub release named `Sentinel v<version>` with these assets:
+
+   | Asset | Source |
+   |---|---|
+   | `Sentinel-Setup-<product>.exe` | `installer/out/Sentinel Setup.exe` |
+   | `Sentinel-Agent-<agent>-win-x64.exe` | the published single-file agent |
+   | `Sentinel-Phone-<app>.apk` | `mobile/build/app/outputs/flutter-apk/app-release.apk` |
+   | `Sentinel-Watch-<watch>.apk` | `watch/app/build/outputs/apk/debug/app-debug.apk` |
+   | `Sentinel-Relay-<relay>.zip` | zip of `server/` |
+   | `SHA256SUMS.txt` | `sha256sum` of every asset |
+
+5. Flipper builds have their own `flipper-v<version>` release.
+6. Verify the `releases/latest/download/...` links in `README.md` resolve after publishing.
+
 ## Code layout
 
 ```
-agent/    C# .NET 10 WPF agent
-mobile/   Flutter app (Android + Windows test target)
-watch/    Kotlin/Compose Wear OS app
-server/   Flask relay and tests
-docs/     setup, security, architecture, API
+agent/      C# .NET 10 WPF agent
+mobile/     Flutter app for Android
+watch/      Kotlin/Compose Wear OS app
+flipper/    Flipper Zero FAP and optional ESP32 bridge
+server/     Flask relay and tests
+installer/  Windows setup wizard and agent uninstaller
+docs/       setup, security, architecture, API
 ```
 
 ## License
