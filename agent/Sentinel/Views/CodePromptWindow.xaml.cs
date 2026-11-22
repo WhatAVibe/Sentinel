@@ -43,7 +43,10 @@ public partial class CodePromptWindow : Window
         }
         if (!_host.VerifyCode(code))
         {
-            ShowError("That code is not valid right now. Wait for the next code and try again.");
+            var locked = _host.CodeLockoutRemaining;
+            ShowError(locked > TimeSpan.Zero
+                ? $"Too many attempts. Try again in {(int)Math.Ceiling(locked.TotalSeconds)}s."
+                : "That code is not valid right now. Wait for the next code and try again.");
             CodeBox.SelectAll();
             CodeBox.Focus();
             return;
@@ -67,7 +70,10 @@ public partial class CodePromptWindow : Window
     {
         if (!_host.VerifyCode(MasterBox.Password))
         {
-            ShowError("That recovery password is not correct.");
+            var locked = _host.CodeLockoutRemaining;
+            ShowError(locked > TimeSpan.Zero
+                ? $"Too many attempts. Try again in {(int)Math.Ceiling(locked.TotalSeconds)}s."
+                : "That recovery password is not correct.");
             MasterBox.SelectAll();
             MasterBox.Focus();
             return;

@@ -4,7 +4,7 @@ Flask + SQLite relay for Sentinel. It stores devices, linked phones/watch, event
 and brokers commands between the PC agent and the mobile clients. It never sees your Windows password and
 cannot unlock the PC on its own.
 
-Version: **1.3.2** (`sentinel_server/config.py`). Protocol: `v1.2`.
+Version: **1.3.3** (`sentinel_server/config.py`). Protocol: `v1.2`.
 
 ## Run
 

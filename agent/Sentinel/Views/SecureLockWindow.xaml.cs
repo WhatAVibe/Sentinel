@@ -152,7 +152,10 @@ public partial class SecureLockWindow : Window
         }
         if (!App.Host.VerifyCode(code))
         {
-            ShowError("That code is not valid right now.");
+            var locked = App.Host.CodeLockoutRemaining;
+            ShowError(locked > TimeSpan.Zero
+                ? $"Too many attempts. Try again in {(int)Math.Ceiling(locked.TotalSeconds)}s."
+                : "That code is not valid right now.");
             CodeBox.SelectAll();
             CodeBox.Focus();
             return;
@@ -171,7 +174,10 @@ public partial class SecureLockWindow : Window
     {
         if (!App.Host.VerifyCode(MasterBox.Password))
         {
-            ShowError("That recovery password is not correct.");
+            var locked = App.Host.CodeLockoutRemaining;
+            ShowError(locked > TimeSpan.Zero
+                ? $"Too many attempts. Try again in {(int)Math.Ceiling(locked.TotalSeconds)}s."
+                : "That recovery password is not correct.");
             MasterBox.SelectAll();
             MasterBox.Focus();
             return;

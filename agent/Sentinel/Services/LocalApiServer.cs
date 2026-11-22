@@ -18,7 +18,7 @@ public sealed class LocalApiServer : IDisposable
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private readonly ConcurrentDictionary<string, object> _commands = new();
-    private readonly ConcurrentDictionary<string, (int count, DateTime window)> _pairAttempts = new();
+    private readonly ConcurrentDictionary<string, (int count, DateTime window)> _attempts = new();
 
     public LocalApiServer(AgentHost host) => _host = host;
 
@@ -96,8 +96,10 @@ public sealed class LocalApiServer : IDisposable
                 timeout.CancelAfter(TimeSpan.FromSeconds(60));
                 using var stream = client.GetStream();
                 var request = await ReadRequestAsync(stream, timeout.Token).ConfigureAwait(false);
-                var remote = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
-                request = request with { Remote = remote };
+                var endpoint = client.Client.RemoteEndPoint as IPEndPoint;
+                var remoteIp = endpoint?.Address.ToString() ?? "unknown";
+                var remote = endpoint?.ToString() ?? remoteIp;
+                request = request with { Remote = remote, RemoteIp = remoteIp };
                 var watch = Stopwatch.StartNew();
                 var (status, contentType, payload) = await RouteAsync(request, timeout.Token).ConfigureAwait(false);
                 _host.Log.Write(
@@ -145,18 +147,13 @@ public sealed class LocalApiServer : IDisposable
 
         if (method == "POST" && path == "/local/pair")
         {
+            if (Limited($"pair:{request.RemoteIp}", 8, TimeSpan.FromMinutes(1)))
+                return Json(new { error = "rate_limited" }, 429);
             var body = ParseJson(request.Body);
             var code = GetString(body, "code");
-            var key = request.Remote;
-            var attempt = _pairAttempts.GetOrAdd(key, _ => (0, DateTime.UtcNow));
-            if (DateTime.UtcNow - attempt.window > TimeSpan.FromMinutes(1)) attempt = (0, DateTime.UtcNow);
-            attempt.count++;
-            _pairAttempts[key] = attempt;
-            if (attempt.count > 8) return Json(new { error = "rate_limited" }, 429);
-
             if (!_host.ValidateLocalPairCode(code)) return Json(new { error = "bad_code" }, 403);
             _host.InvalidateLocalPairCode();
-            _pairAttempts.TryRemove(key, out _);
+            _attempts.TryRemove($"pair:{request.RemoteIp}", out _);
             _host.Log.Write("info", "direct mode paired", new { remote = request.Remote });
             return Json(new
             {
@@ -241,11 +238,20 @@ public sealed class LocalApiServer : IDisposable
 
             case ("POST", "/local/unlock"):
             {
+                if (Limited($"unlock:{request.RemoteIp}", 10, TimeSpan.FromMinutes(1)))
+                    return Json(new { error = "too_many_attempts" }, 429);
                 var body = ParseJson(request.Body);
                 var code = GetString(body, "code");
                 var action = GetString(body, "action");
                 if (action is not ("unlock" or "away_disable" or "")) return Json(new { error = "bad_action" }, 400);
-                if (!_host.VerifyCode(code)) return Json(new { error = "bad_code" }, 403);
+                var check = _host.CheckCode(code);
+                if (check == CodeCheck.LockedOut)
+                    return Json(new
+                    {
+                        error = "too_many_attempts",
+                        retry_after = (int)Math.Ceiling(_host.CodeLockoutRemaining.TotalSeconds)
+                    }, 429);
+                if (check != CodeCheck.Ok) return Json(new { error = "bad_code" }, 403);
                 if (!_host.CanDisarm(out var why)) return Json(new { error = "not_allowed", detail = why }, 403);
                 var envelope = new CommandEnvelope
                 {
@@ -270,9 +276,17 @@ public sealed class LocalApiServer : IDisposable
 
             case ("POST", "/local/totp/check"):
             {
+                if (Limited($"totp:{request.RemoteIp}", 10, TimeSpan.FromMinutes(1)))
+                    return Json(new { error = "too_many_attempts" }, 429);
                 var body = ParseJson(request.Body);
-                var ok = _host.VerifyCode(GetString(body, "code"));
-                return Json(new { ok, seconds_remaining = Totp.SecondsRemaining() });
+                var check = _host.CheckCode(GetString(body, "code"));
+                if (check == CodeCheck.LockedOut)
+                    return Json(new
+                    {
+                        error = "too_many_attempts",
+                        retry_after = (int)Math.Ceiling(_host.CodeLockoutRemaining.TotalSeconds)
+                    }, 429);
+                return Json(new { ok = check == CodeCheck.Ok, seconds_remaining = Totp.SecondsRemaining() });
             }
         }
 
@@ -302,6 +316,32 @@ public sealed class LocalApiServer : IDisposable
         }
 
         return Json(new { error = "not_found" }, 404);
+    }
+
+    private bool Limited(string key, int limit, TimeSpan window)
+    {
+        PruneAttempts(window);
+        var now = DateTime.UtcNow;
+        var attempt = _attempts.GetOrAdd(key, _ => (0, now));
+        if (now - attempt.window > window) attempt = (0, now);
+        attempt.count++;
+        _attempts[key] = attempt;
+        if (attempt.count > limit)
+        {
+            _host.Log.Write("warning", "local api rate limit", new { key, limit });
+            return true;
+        }
+        return false;
+    }
+
+    private void PruneAttempts(TimeSpan window)
+    {
+        if (_attempts.Count < 32) return;
+        var cutoff = DateTime.UtcNow - window;
+        foreach (var entry in _attempts)
+        {
+            if (entry.Value.window < cutoff) _attempts.TryRemove(entry.Key, out _);
+        }
     }
 
     private static (int, string, byte[]) Json(object payload, int status = 200) =>
@@ -381,9 +421,6 @@ public sealed class LocalApiServer : IDisposable
                      $"Content-Type: {contentType}\r\n" +
                      $"Content-Length: {payload.Length}\r\n" +
                      "Connection: close\r\n" +
-                     "Access-Control-Allow-Origin: *\r\n" +
-                     "Access-Control-Allow-Headers: Authorization, Content-Type\r\n" +
-                     "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
                      "Cache-Control: no-store\r\n\r\n";
         await stream.WriteAsync(Encoding.ASCII.GetBytes(header), ct).ConfigureAwait(false);
         if (payload.Length > 0) await stream.WriteAsync(payload, ct).ConfigureAwait(false);
@@ -396,7 +433,8 @@ public sealed class LocalApiServer : IDisposable
         Dictionary<string, string> Query,
         Dictionary<string, string> Headers,
         byte[] Body,
-        string Remote);
+        string Remote,
+        string RemoteIp = "unknown");
 
     private static async Task<HttpRequest> ReadRequestAsync(NetworkStream stream, CancellationToken ct)
     {

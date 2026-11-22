@@ -1,6 +1,6 @@
 # Sentinel Installer
 
-WPF setup wizard for the Windows agent. Version **2.1.0**.
+WPF setup wizard for the Windows agent. Version **2.1.1**.
 
 The published `Sentinel-Setup-2.1.0.exe` is a self-contained single file. It contains the compressed
 self-contained agent, so a clean Windows 10/11 x64 machine needs nothing preinstalled.

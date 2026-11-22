@@ -105,24 +105,6 @@ def create_app(cfg: Config) -> Flask:
     init_ws(app, db, hub, cfg)
     init_request_logging(app, cfg)
 
-    @app.before_request
-    def cors_preflight():
-        if request.method == "OPTIONS":
-            resp = app.make_response(("", 204))
-            _cors(resp)
-            return resp
-
-    @app.after_request
-    def add_cors(resp):
-        _cors(resp)
-        return resp
-
-    def _cors(resp):
-        resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
-        resp.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Auth-Token"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
-        resp.headers["Access-Control-Max-Age"] = "86400"
-
     @app.get("/")
     def index():
         stats = hub.stats()

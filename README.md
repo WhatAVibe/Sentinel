@@ -15,7 +15,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
 [![Release](https://img.shields.io/github/v/release/WhatAVibe/Sentinel?style=flat-square&color=6EE7A8&label=release)](https://github.com/WhatAVibe/Sentinel/releases/latest)
-[![Version](https://img.shields.io/badge/version-2.1.0-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2.1.1-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Download](#download) · [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -36,11 +36,11 @@ unsigned; Windows SmartScreen will ask you to confirm the publisher.
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows 10/11 x64** | [Sentinel-Setup-2.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.0.exe) | Installer with the self-contained agent 1.6.0, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
-| Windows (agent only) | [Sentinel-Agent-1.6.0-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-1.6.0-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
+| **Windows 10/11 x64** | [Sentinel-Setup-2.1.1.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.1.exe) | Installer with the self-contained agent 1.6.1, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
+| Windows (agent only) | [Sentinel-Agent-1.6.1-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-1.6.1-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
 | **Android 8.0+** | [Sentinel-Phone-1.5.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.5.1.apk) | Flutter phone app |
 | Wear OS 3+ (API 30) | [Sentinel-Watch-1.3.4.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-1.3.4.apk) | Companion watch app, four tiles and complications |
-| Relay server | [Sentinel-Relay-1.3.2.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-1.3.2.zip) | Flask + SQLite relay source; Python 3.10+ |
+| Relay server | [Sentinel-Relay-1.3.3.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-1.3.3.zip) | Flask + SQLite relay source; Python 3.10+ |
 | Flipper Zero | [Sentinel-Flipper-1.1.0.fap](https://github.com/WhatAVibe/Sentinel/releases/download/flipper-v1.1.0/Sentinel-Flipper-1.1.0.fap) | Separate `flipper-v1.1.0` release (BLE bridge) |
 | Checksums | [SHA256SUMS.txt](https://github.com/WhatAVibe/Sentinel/releases/latest/download/SHA256SUMS.txt) | Verify with `sha256sum -c SHA256SUMS.txt` |
 
@@ -260,7 +260,7 @@ Open `http://<server>:8765/` for a status page. The API lives at `/api/v1`.
 
 ### 2. Windows agent
 
-Run **[Sentinel-Setup-2.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.0.exe)**
+Run **[Sentinel-Setup-2.1.1.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.1.exe)**
 and follow the wizard: terms, install location, recovery password, relay address, pairing. Re-running the
 setup offers **Update / Repair** or **Uninstall**.
 
@@ -631,11 +631,11 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.6.0 | C# / .NET 10 WPF |
-| Relay server | 1.3.2 | Python / Flask / SQLite |
+| Windows agent | 1.6.1 | C# / .NET 10 WPF |
+| Relay server | 1.3.3 | Python / Flask / SQLite |
 | Phone app | 1.5.1 (build 15) | Flutter |
 | Wear OS app | 1.3.4 | Kotlin / Compose / Tiles / Complications |
-| Desktop installer | 2.1.0 | WPF setup and agent uninstaller |
+| Desktop installer | 2.1.1 | WPF setup and agent uninstaller |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

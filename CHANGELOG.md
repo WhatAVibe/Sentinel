@@ -3,6 +3,46 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [2.1.1] — 2026-11-22
+
+Installer 2.1.1 · Agent 1.6.1 · Relay 1.3.3 · Phone 1.5.1 (15) · Watch 1.3.4 (9) · Flipper 1.1.0
+
+### Security
+
+- **Local direct-mode API now actually rate limits.** Pairing attempts are keyed by loopback IP instead of
+  IP:port (every request used a new port, so the old counter never tripped), stale entries are pruned, and
+  `/local/pair` is capped at 8 attempts/minute.
+- **`/local/unlock` and `/local/totp/check` are capped** at 10 requests/minute per loopback IP. Pairing,
+  unlock and code checks go through `AgentHost.CheckCode`, which locks out for 60 seconds after 8 failed
+  codes in a minute — shared by the desktop prompt, the local API and relay-issued commands, so a 6-digit
+  code or recovery password cannot be brute-forced in one TOTP window.
+- **Relay-delivered `unlock`, `away_disable`, `unlock_screen` and `agent_exit` now use the same lockout**
+  (`VerifyTotp`) instead of calling `Totp.Verify` directly. The recovery password still only works locally.
+- **Removed wildcard CORS from the local agent API** (`Access-Control-Allow-Origin: *`) and from the relay.
+  Neither is a browser API; this stops a webpage from probing `127.0.0.1:8790` or the relay with `fetch()`.
+- **PBKDF2-SHA256 for the recovery password raised to 600,000 iterations** (OWASP guidance). Existing
+  hashes store their iteration count; legacy 120,000-iteration hashes verify once and are rehashed
+  automatically on the next successful unlock.
+- **Relay websocket fan-out is now per device.** Phones/watch were registered on one flat client list, so
+  `push_to_device_clients` leaked screenshots, keystroke/clipboard events, state and replies from every PC
+  on the relay to every connected phone. Clients are now keyed by device id like agents already were.
+- **Ownership checks added** to `GET /devices/<id>/commands`, `/events`, `/screenshots`,
+  `/screenshots/<sid>/file` and `DELETE /screenshots/<sid>`: a mobile token can no longer read, download or
+  delete another device's data (IDOR).
+- The relay rate limiter now prunes stale keys and documents that its counters are per process; running
+  multiple workers would multiply the limits until the counters move to Redis.
+
+### Changed
+
+- Installer and agent metadata 2.1.1 / 1.6.1, relay 1.3.3. Phone and watch builds are unchanged from 2.1.0
+  and are still included in the release.
+
+### Documented
+
+- `docs/SECURITY.md` now spells out exactly what the relay stores in plaintext, that SQLite and the
+  screenshot folder have no at-rest encryption, and what the local API lockout and per-device fan-out mean
+  for shared relays. Hardening guidance recommends full-disk encryption on the relay host.
+
 ## [2.1.0] — 2026-11-22
 
 Installer 2.1.0 · Agent 1.6.0 · Relay 1.3.2 · Phone 1.5.1 (15) · Watch 1.3.4 (9) · Flipper 1.1.0

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -121,6 +122,33 @@ public static class SelfTest
             shotsRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             ok &= http.Send(shotsRequest).IsSuccessStatusCode;
 
+            var healthResponse = http.GetAsync(baseUrl + "/local/health").GetAwaiter().GetResult();
+            ok &= !healthResponse.Headers.Contains("Access-Control-Allow-Origin");
+
+            var lastPairStatus = 0;
+            for (var attempt = 0; attempt < 9; attempt++)
+            {
+                var wrong = new StringContent(JsonSerializer.Serialize(new { code = "ZZZZZZ" }),
+                    Encoding.UTF8, "application/json");
+                var response = http.PostAsync(baseUrl + "/local/pair", wrong).GetAwaiter().GetResult();
+                lastPairStatus = (int)response.StatusCode;
+            }
+            ok &= lastPairStatus == 429;
+
+            var locked = false;
+            for (var attempt = 0; attempt < 10 && !locked; attempt++)
+            {
+                using var checkRequest = new HttpRequestMessage(HttpMethod.Post, baseUrl + "/local/totp/check")
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(new { code = "000000" }),
+                        Encoding.UTF8, "application/json")
+                };
+                checkRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                var response = http.Send(checkRequest);
+                locked = (int)response.StatusCode == 429;
+            }
+            ok &= locked;
+
             return ok;
         });
 
@@ -131,6 +159,24 @@ public static class SelfTest
             host.SaveConfig();
             var after = File.ReadAllText(path);
             return after.Contains(host.Config.DeviceId) && before.Length > 0;
+        });
+
+        Add("master-password", () =>
+        {
+            var config = new AppConfig();
+            MasterPassword.Set(config, "correct horse battery");
+            var ok = MasterPassword.Verify(config, "correct horse battery");
+            ok &= !MasterPassword.Verify(config, "wrong password");
+            ok &= !MasterPassword.NeedsUpgrade(config);
+
+            var salt = RandomNumberGenerator.GetBytes(16);
+            var legacy = Rfc2898DeriveBytes.Pbkdf2("legacy password", salt, 120_000,
+                HashAlgorithmName.SHA256, 32);
+            config.ProtectedMasterPassword = Secrets.Protect(
+                $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(legacy)}");
+            ok &= MasterPassword.Verify(config, "legacy password");
+            ok &= MasterPassword.NeedsUpgrade(config);
+            return ok;
         });
 
         Add("adb-resolve", () =>

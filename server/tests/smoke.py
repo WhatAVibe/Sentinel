@@ -107,6 +107,14 @@ def main():
     hb = call("POST", "/api/v1/agent/heartbeat", {"away": True, "locked": True, "metrics": {"cpu_percent": 3.2}, "state": {"monitors": 2}}, agent)
     check("heartbeat", bool(hb and hb["device"]["online"]))
 
+    phones = call("GET", "/api/v1/agent/phones", token=agent)
+    check("phones listed", bool(phones and phones["phones"]), str(phones))
+    mid = phones["phones"][0]["id"]
+    pending = phones["phones"][0].get("confirmed") is False
+    check("new phone is pending", pending, str(phones["phones"][0]))
+    conf = call("POST", f"/api/v1/agent/phones/{mid}/confirm", {"code": totp_now(totp_secret)}, agent)
+    check("phone confirmed", bool(conf and conf.get("ok")), str(conf))
+
     devices = call("GET", "/api/v1/devices", token=mobile)
     check("device list online", devices and devices["devices"][0]["online"] and devices["devices"][0]["away"], str(devices))
     check("device secret hidden from list", "totp_secret" not in devices["devices"][0])
@@ -210,6 +218,32 @@ def main():
     got = poll["commands"][0] if poll and poll.get("commands") else None
     check("exit reaches agent", bool(got and got["type"] == "agent_exit" and got["args"].get("code")),
           str(poll))
+
+    # second tenant: its token must not reach the first device
+    req2 = call("POST", "/api/v1/pair/request",
+                {"device_name": "SMOKE-PC-2", "platform": "windows", "agent_version": "test"})
+    rid2, code2, rtoken2 = req2["request_id"], req2["pair_code"], req2["request_token"]
+    appr2 = call("POST", "/api/v1/pair/approve",
+                 {"request_id": rid2, "pair_code": code2, "mobile_name": "Other Phone"})
+    mobile2 = appr2["mobile_token"]
+    did2 = appr2["device"]["id"]
+    secret2 = appr2["totp_secret"]
+    st2 = call("GET", f"/api/v1/pair/status?request_id={rid2}&token={rtoken2}")
+    agent2 = st2["agent_token"]
+    phones2 = call("GET", "/api/v1/agent/phones", token=agent2)
+    call("POST", f"/api/v1/agent/phones/{phones2['phones'][0]['id']}/confirm",
+         {"code": totp_now(secret2)}, agent2)
+
+    cross = call("GET", f"/api/v1/devices/{did}/events?since=0", token=mobile2, expect=403)
+    check("cross-device events blocked", cross is not None)
+    cross = call("GET", f"/api/v1/devices/{did}/screenshots", token=mobile2, expect=403)
+    check("cross-device screenshots blocked", cross is not None)
+    cross = call("GET", f"/api/v1/devices/{did}/commands", token=mobile2, expect=403)
+    check("cross-device commands blocked", cross is not None)
+    cross = call("DELETE", f"/api/v1/devices/{did}/screenshots/{sid}", token=mobile2, expect=403)
+    check("cross-device screenshot delete blocked", cross is not None)
+    cross = call("GET", f"/api/v1/devices/{did}/screenshots/{sid}/file", token=mobile2, expect=403)
+    check("cross-device screenshot file blocked", cross is not None)
 
     noauth = call("GET", "/api/v1/devices", expect=401)
     check("auth enforced", noauth is not None)

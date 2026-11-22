@@ -62,7 +62,7 @@ def init_ws(app, db, hub, cfg):
         if not mobile:
             ws.send(json.dumps({"type": "error", "error": "unauthorized"}))
             return
-        q = hub.register_client()
+        q = hub.register_client(mobile["device_id"])
         try:
             ws.send(json.dumps({"type": "hello", "device_id": mobile["device_id"]}))
             while True:
@@ -73,4 +73,4 @@ def init_ws(app, db, hub, cfg):
                     continue
                 ws.send(json.dumps(item))
         finally:
-            hub.unregister_client(q)
+            hub.unregister_client(mobile["device_id"], q)

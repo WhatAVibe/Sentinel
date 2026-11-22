@@ -57,7 +57,13 @@ def verify_totp(secret: str, code: str, window: int = 1, step: int = 30) -> bool
 
 
 class RateLimiter:
-    """Tiny in-memory sliding window limiter keyed by an arbitrary string."""
+    """Tiny in-memory sliding window limiter keyed by an arbitrary string.
+
+    Counters live in this process, so the limits below assume the single-process
+    relay described in the README. Running multiple workers (gunicorn -w N)
+    would give each worker its own counters and multiply the effective limit;
+    move the counters to Redis before scaling out.
+    """
 
     def __init__(self):
         self._hits: dict[str, list[float]] = {}
@@ -66,6 +72,10 @@ class RateLimiter:
     def allow(self, key: str, limit: int, window: float) -> bool:
         now = time.time()
         with self._lock:
+            if len(self._hits) > 4096:
+                stale = [k for k, v in self._hits.items() if not v or now - v[-1] > window * 4]
+                for k in stale:
+                    self._hits.pop(k, None)
             hits = [t for t in self._hits.get(key, []) if now - t < window]
             if len(hits) >= limit:
                 self._hits[key] = hits

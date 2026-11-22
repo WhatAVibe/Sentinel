@@ -15,7 +15,7 @@ anyone using the PC.
 
 - A compromised or malicious PC (the agent runs as your user and can be killed by a local admin).
 - A compromised relay host. It sees plaintext metadata, events and screenshots. If that matters, host the
-  relay on hardware you trust and use TLS/Tailscale.
+  relay on hardware you trust, use TLS/Tailscale, and see **Relay data at rest** below.
 - Physical access with the PC powered off or booted from another OS.
 - Anything you type into a PC that is already compromised before the agent starts.
 
@@ -29,6 +29,7 @@ anyone using the PC.
 | Phone TOTP secret | phone | `flutter_secure_storage` |
 | Tokens (server) | SQLite | SHA-256 hashes only |
 | Pairing code | server + PC | 6 chars, 10 min TTL, single use |
+| Recovery password | PC `config.json` | DPAPI + PBKDF2-SHA256, 600,000 iterations |
 
 The quick-unlock PIN is a convenience lock for the app, stored as salted SHA-256. It is not a substitute for
 the 2FA code and does not protect the relay.
@@ -37,15 +38,27 @@ the 2FA code and does not protect the relay.
 
 - Agent and phone authenticate with 32-byte random bearer tokens (`Authorization: Bearer …`).
 - WS clients pass the same token as a query parameter (WebSocket clients cannot set headers reliably).
+- **Live pushes are scoped per device.** A phone's socket only receives payloads for the PC it is paired to;
+  the relay does not rely on the app filtering by `device_id`.
+- Mobile token access to `/devices/<id>/...` is checked against the device that token belongs to on every
+  route, including commands, events, screenshots and screenshot files.
 - Pairing approvals are rate limited per IP; codes are compared case-insensitively and single-use.
 - Every pairing, command, unlock attempt and bad code is appended to the `audit` table.
+- **Local direct-mode API** (`127.0.0.1:8790`, only used with ADB): pairing is capped at 8 attempts/minute,
+  `unlock` and `totp_check` at 10 requests/minute, and every code check feeds the same lockout as the
+  desktop prompts (8 failures in a minute → 60 s). The API sends no CORS headers, so a webpage open on the
+  PC cannot call it with `fetch()`.
+- The relay sends no CORS headers either; it is a native-client API, not a browser API.
 
 ## Second factor
 
 - TOTP, RFC 6238, SHA-1, 6 digits, 30-second step, ±1 step window.
 - Verified **twice**: the relay rejects the request, and the agent checks the same code locally before
   disarming. A malicious/compromised relay therefore cannot unlock the PC by itself.
-- Rate limits: 6 code attempts/minute per device, then HTTP 429. The mobile app also rate-limits itself.
+- Rate limits: the relay allows 6 code attempts/minute per device; the agent locks code verification for
+  60 seconds after 8 failures in a minute. The lockout is shared by the secure lock, the prompt dialogs,
+  relay-issued `unlock`/`away_disable`/`unlock_screen`/`agent_exit` commands and the local direct API, so a
+  6-digit code (or the recovery password at the PC) cannot be brute-forced within a TOTP window.
 - Works with any authenticator: the app's Security tab, Yubico Authenticator, a Flipper Zero TOTP app,
   etc. The tray dialog accepts the six digits typed manually.
 - **The PC never renders or copies the secret or a generated code.** Codes are only displayed on external
@@ -72,12 +85,39 @@ Treat `storage/shots` and `storage/logs` as sensitive:
   with modifiers and the active window, which can include passwords. Leave it off unless you accept that.
   It is also gated by monitoring: with `MonitorOnlyInAway` on (default), keys are only recorded while away
   mode is active. The keyboard hook itself always runs so secure lock can block shortcuts, but it does not log
-  outside monitoring.
+  outside monitoring. Captured keys are sent as ordinary events (titles such as `Key A`) with **no redaction
+  or per-app pause**, so anything typed into a password manager or a browser login form while monitoring is
+  recorded in the relay's database. There is no heuristic to detect password fields.
 - Message replies and power-confirm decisions are stored in the messages table and event log.
 - The `clipboard` command lets a paired phone or watch replace the PC clipboard (used to push the 2FA code
   to Ctrl+V). It does not read the clipboard back; clipboard capture stays opt-in and local. Values written
   by this command are excluded from clipboard capture, so a pushed code is not recorded in the event log.
 - Screenshots of the Windows lock screen contain no credentials, but may reveal account names.
+
+## Relay data at rest
+
+The relay stores everything as plaintext in `server/storage/`:
+
+| File | Contents |
+|---|---|
+| `sentinel.db` → `events` | Window titles, app names, network connections, searches, clipboard text, USB and session events, and keyboard events when capture is on |
+| `sentinel.db` → `screenshots` | Screenshot metadata and file paths |
+| `sentinel.db` → `messages` | Messages and replies |
+| `sentinel.db` → `audit` | Pairing, commands, unlocks and bad-code attempts |
+| `shots/*.png` | Full screenshots of every monitor, including anything visible on screen |
+| `logs/` | Request log and errors |
+
+There is **no encryption at rest** (no SQLCipher, no encrypted screenshot bucket). Anyone with read access to
+the relay's disk or a backup can recover all of it. Tokens are only stored as SHA-256 hashes and TOTP secrets
+are present in the `devices` table because the relay has to verify codes.
+
+Mitigations:
+
+- Run the relay on a host you control and trust, with full-disk encryption and encrypted backups.
+- Keep `retention_days` short and purge screenshots you no longer need.
+- Leave `CaptureKeystrokes` and clipboard capture off unless the activity log is worth the exposure.
+- Give the relay its own user and restrictive permissions on `storage/`; do not run it as root.
+- Encrypt before it leaves the PC if the relay belongs to someone else (or self-host).
 
 ## Transport
 
@@ -139,6 +179,7 @@ password or a credential-provider shim.
 ## Hardening checklist
 
 - [ ] Relay reachable only through Tailscale or HTTPS
+- [ ] Relay disk and backups encrypted; `retention_days` kept short
 - [ ] `RequirePhonePresence` on if you carry the phone anyway
 - [ ] `ProtectPowerCommands` on to stop accidental shutdowns
 - [ ] `PowerActionMode` set to `confirm` so remote shutdown/restart needs a click at the PC

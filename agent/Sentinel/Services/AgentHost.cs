@@ -48,6 +48,13 @@ public sealed class AgentHost : IDisposable
     private long _eventSeq;
     private string _localPairCode = "";
     private DateTime _localPairCodeExpiry = DateTime.MinValue;
+    private readonly object _codeLock = new();
+    private int _codeFailures;
+    private DateTime _codeWindowStart = DateTime.MinValue;
+    private DateTime _codeLockedUntil = DateTime.MinValue;
+    private const int MaxCodeFailures = 8;
+    private static readonly TimeSpan CodeFailureWindow = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan CodeLockoutTime = TimeSpan.FromMinutes(1);
 
     public AgentHost()
     {
@@ -402,7 +409,7 @@ public sealed class AgentHost : IDisposable
     public async Task<CommandOutcome> DisableAwayAsync(string reason, string? code)
     {
         if (!Away) return new CommandOutcome(true, null, new { away = false, already = true });
-        if (!Totp.Verify(Config.TotpSecret, code)) return new CommandOutcome(false, "bad_code");
+        if (!VerifyTotp(code)) return new CommandOutcome(false, "bad_code");
         if (Config.RequirePhonePresence && !Adb.TrustedPresent)
             return new CommandOutcome(false, "phone_not_present");
 
@@ -504,7 +511,7 @@ public sealed class AgentHost : IDisposable
                 case "unlock":
                 case "away_disable":
                 {
-                    if (!Totp.Verify(Config.TotpSecret, code)) return new CommandOutcome(false, "bad_code");
+                    if (!VerifyTotp(code)) return new CommandOutcome(false, "bad_code");
                     if (Config.RequirePhonePresence && !Adb.TrustedPresent)
                         return new CommandOutcome(false, "phone_not_present");
                     var result = await DisableAwayAsync(source, code);
@@ -622,14 +629,14 @@ public sealed class AgentHost : IDisposable
 
                 case "unlock_screen":
                 {
-                    if (!Totp.Verify(Config.TotpSecret, code)) return new CommandOutcome(false, "bad_code");
+                    if (!VerifyTotp(code)) return new CommandOutcome(false, "bad_code");
                     ExitSecureLock(source);
                     return new CommandOutcome(true, null, new { locked = false });
                 }
 
                 case "agent_exit":
                 {
-                    if (!Totp.Verify(Config.TotpSecret, code))
+                    if (!VerifyTotp(code))
                         return new CommandOutcome(false, "bad_code");
                     var app = Application.Current;
                     if (app == null) return new CommandOutcome(false, "no_ui");
@@ -1060,8 +1067,59 @@ public sealed class AgentHost : IDisposable
         _localPairCodeExpiry = DateTime.MinValue;
     }
 
-    public bool VerifyCode(string? code) =>
-        Totp.Verify(Config.TotpSecret, code) || MasterPassword.Verify(Config, code);
+    public bool VerifyCode(string? code) => CheckCode(code) == CodeCheck.Ok;
+
+    public bool VerifyTotp(string? code) => CheckCode(code, allowMaster: false) == CodeCheck.Ok;
+
+    public TimeSpan CodeLockoutRemaining
+    {
+        get
+        {
+            lock (_codeLock)
+            {
+                var remaining = _codeLockedUntil - DateTime.UtcNow;
+                return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+            }
+        }
+    }
+
+    public CodeCheck CheckCode(string? code, bool allowMaster = true)
+    {
+        lock (_codeLock)
+        {
+            var now = DateTime.UtcNow;
+            if (now < _codeLockedUntil) return CodeCheck.LockedOut;
+            if (now - _codeWindowStart > CodeFailureWindow)
+            {
+                _codeWindowStart = now;
+                _codeFailures = 0;
+            }
+
+            var totpOk = Totp.Verify(Config.TotpSecret, code);
+            if (totpOk || (allowMaster && MasterPassword.Verify(Config, code)))
+            {
+                if (!totpOk && MasterPassword.NeedsUpgrade(Config))
+                {
+                    MasterPassword.Set(Config, code!);
+                    SaveConfig();
+                }
+                _codeFailures = 0;
+                _codeWindowStart = now;
+                return CodeCheck.Ok;
+            }
+
+            _codeFailures++;
+            if (_codeFailures >= MaxCodeFailures)
+            {
+                _codeLockedUntil = now + CodeLockoutTime;
+                _codeFailures = 0;
+                _codeWindowStart = now;
+                Log.Write("warning", "code verification locked out",
+                    new { seconds = (int)CodeLockoutTime.TotalSeconds });
+            }
+            return CodeCheck.BadCode;
+        }
+    }
 
     public bool HasMasterPassword => MasterPassword.IsSet(Config);
 
@@ -1161,4 +1219,11 @@ public sealed class AgentHost : IDisposable
         Api.Dispose();
         _captureGate.Dispose();
     }
+}
+
+public enum CodeCheck
+{
+    Ok,
+    BadCode,
+    LockedOut
 }

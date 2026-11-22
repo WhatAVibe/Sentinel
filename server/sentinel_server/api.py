@@ -1086,6 +1086,8 @@ def get_command(did, cid):
 @bp.get("/devices/<did>/commands")
 @mobile_required
 def list_commands(did):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
     rows = db().all(
         "SELECT * FROM commands WHERE device_id=? ORDER BY created_at DESC LIMIT 40", (did,)
     )
@@ -1095,6 +1097,8 @@ def list_commands(did):
 @bp.get("/devices/<did>/events")
 @mobile_required
 def list_events(did):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
     since = int(request.args.get("since", 0))
     before = int(request.args.get("before", 0))
     limit = min(int(request.args.get("limit", 100)), 500)
@@ -1260,6 +1264,8 @@ def message_reply(mid):
 @bp.get("/devices/<did>/screenshots")
 @mobile_required
 def list_shots(did):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
     limit = min(int(request.args.get("limit", 60)), 200)
     before = int(request.args.get("before", 0))
     sql = "SELECT * FROM screenshots WHERE device_id=?"
@@ -1278,6 +1284,8 @@ def list_shots(did):
 @bp.get("/devices/<did>/screenshots/<sid>/file")
 @mobile_required
 def shot_file(did, sid):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
     row = db().one("SELECT * FROM screenshots WHERE id=? AND device_id=?", (sid, did))
     if not row or not Path(row["path"]).exists():
         return jsonify(error="not_found"), 404
@@ -1289,6 +1297,8 @@ def shot_file(did, sid):
 @bp.delete("/devices/<did>/screenshots/<sid>")
 @mobile_required
 def shot_delete(did, sid):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
     row = db().one("SELECT * FROM screenshots WHERE id=? AND device_id=?", (sid, did))
     if not row:
         return jsonify(error="not_found"), 404
