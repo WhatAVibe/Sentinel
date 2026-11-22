@@ -6,11 +6,54 @@ namespace PCMonitor.Agent.Views;
 
 public partial class DashboardView : UserControl
 {
+    private readonly System.Windows.Threading.DispatcherTimer _codeTimer;
+
     public DashboardView()
     {
         InitializeComponent();
         DataContext = UiState.I;
         UiState.I.UpdateFromDevice(App.Host.BuildDeviceSnapshot());
+        _codeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _codeTimer.Tick += (_, _) => UpdateCode();
+        Loaded += (_, _) =>
+        {
+            UpdateCode();
+            _codeTimer.Start();
+        };
+        Unloaded += (_, _) => _codeTimer.Stop();
+    }
+
+    private void UpdateCode()
+    {
+        var code = Totp.Now(App.Host.Config.TotpSecret);
+        if (string.IsNullOrEmpty(code))
+        {
+            CodeText.Text = "------";
+            CodeSecondsText.Text = "not paired";
+            CodeProgress.Value = 0;
+            CopyCodeButton.IsEnabled = false;
+            return;
+        }
+        var seconds = Totp.SecondsRemaining();
+        CodeText.Text = code;
+        CodeSecondsText.Text = $"{seconds}s left";
+        CodeProgress.Value = seconds;
+        CopyCodeButton.IsEnabled = true;
+    }
+
+    private void CopyCode_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var code = Totp.Now(App.Host.Config.TotpSecret);
+            if (string.IsNullOrEmpty(code)) return;
+            Clipboard.SetText(code);
+            App.Tray.ShowBalloon("Sentinel", $"2FA code {code} copied to the clipboard.");
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private async void Action_Click(object sender, RoutedEventArgs e)
