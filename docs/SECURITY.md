@@ -73,7 +73,8 @@ Treat `storage/shots` and `storage/logs` as sensitive:
   outside monitoring.
 - Message replies and power-confirm decisions are stored in the messages table and event log.
 - The `clipboard` command lets a paired phone or watch replace the PC clipboard (used to push the 2FA code
-  to Ctrl+V). It does not read the clipboard back; clipboard capture stays opt-in and local.
+  to Ctrl+V). It does not read the clipboard back; clipboard capture stays opt-in and local. Values written
+  by this command are excluded from clipboard capture, so a pushed code is not recorded in the event log.
 - Screenshots of the Windows lock screen contain no credentials, but may reveal account names.
 
 ## Transport

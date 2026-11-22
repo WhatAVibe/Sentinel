@@ -332,6 +332,11 @@ public sealed class MonitorService : IDisposable
             var text = System.Windows.Forms.Clipboard.GetText();
             if (string.IsNullOrEmpty(text)) return;
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+            if (ClipboardPrivacy.ShouldSkip(text))
+            {
+                lock (_lock) _lastClipboardHash = hash;
+                return;
+            }
             lock (_lock)
             {
                 if (hash == _lastClipboardHash) return;

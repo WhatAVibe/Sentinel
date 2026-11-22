@@ -604,6 +604,7 @@ public sealed class AgentHost : IDisposable
 
     private static bool SetClipboard(string text)
     {
+        ClipboardPrivacy.Suppress(text);
         try
         {
             var app = Application.Current;
