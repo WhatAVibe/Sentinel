@@ -15,7 +15,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
 [![Release](https://img.shields.io/github/v/release/WhatAVibe/Sentinel?style=flat-square&color=6EE7A8&label=release)](https://github.com/WhatAVibe/Sentinel/releases/latest)
-[![Version](https://img.shields.io/badge/version-3.0.1-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-3.0.2-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Download](#download) · [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -36,15 +36,15 @@ unsigned; Windows SmartScreen will ask you to confirm the publisher.
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows 10/11 x64** | [Sentinel-Setup-3.0.1.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.1.exe) | Installer with the self-contained agent 2.0.1, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
-| Windows (agent only) | [Sentinel-Agent-2.0.1-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-2.0.1-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
-| **Android 8.0+** | [Sentinel-Phone-2.0.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.1.apk) | Flutter phone app |
+| **Windows 10/11 x64** | [Sentinel-Setup-3.0.2.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.2.exe) | Installer with the self-contained agent 2.0.2, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
+| Windows (agent only) | [Sentinel-Agent-2.0.2-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-2.0.2-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
+| **Android 8.0+** | [Sentinel-Phone-2.0.2.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.2.apk) | Flutter phone app |
 | Wear OS 3+ (API 30) | [Sentinel-Watch-2.0.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-2.0.1.apk) | Companion watch app, four tiles and complications |
 | Relay server | [Sentinel-Relay-2.0.1.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-2.0.1.zip) | Flask + SQLite relay source; Python 3.10+ |
 | Flipper Zero | [Sentinel-Flipper-1.1.0.fap](https://github.com/WhatAVibe/Sentinel/releases/download/flipper-v1.1.0/Sentinel-Flipper-1.1.0.fap) | Separate `flipper-v1.1.0` release (BLE bridge) |
 | Checksums | [SHA256SUMS.txt](https://github.com/WhatAVibe/Sentinel/releases/latest/download/SHA256SUMS.txt) | Verify with `sha256sum -c SHA256SUMS.txt` |
 
-Install the phone app with `adb install -r Sentinel-Phone-2.0.1.apk`, or open the APK on the phone. The watch
+Install the phone app with `adb install -r Sentinel-Phone-2.0.2.apk`, or open the APK on the phone. The watch
 app goes over Wireless debugging: `adb connect <watch-ip>:<port>` then `adb install -r
 Sentinel-Watch-2.0.1.apk`. The relay is a plain folder — unzip it and follow
 [Quick start](#1-relay-server) below.
@@ -340,7 +340,7 @@ again. Docker: `docker compose stop sentinel`, restore into the `sentinel-data` 
 
 ### 2. Windows agent
 
-Run **[Sentinel-Setup-3.0.1.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.1.exe)**
+Run **[Sentinel-Setup-3.0.2.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.2.exe)**
 and follow the wizard: terms, install location, recovery password, relay address, pairing. Re-running the
 setup offers **Update / Repair** or **Uninstall**.
 
@@ -388,7 +388,7 @@ Silent fleet installs: `Sentinel Setup.exe --silent --relay <url> --recovery <pa
 
 ### 3. Phone app
 
-Install **[Sentinel-Phone-2.0.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.1.apk)**
+Install **[Sentinel-Phone-2.0.2.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.2.apk)**
 (Android 8.0+), or build it:
 
 ```powershell
@@ -715,11 +715,11 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 2.0.1 | C# / .NET 10 WPF |
+| Windows agent | 2.0.2 | C# / .NET 10 WPF |
 | Relay server | 2.0.1 | Python / Flask / SQLite |
-| Phone app | 2.0.1 (build 19) | Flutter |
+| Phone app | 2.0.2 (build 20) | Flutter |
 | Wear OS app | 2.0.1 | Kotlin / Compose / Tiles / Complications |
-| Desktop installer | 3.0.1 | WPF setup and agent uninstaller |
+| Desktop installer | 3.0.2 | WPF setup and agent uninstaller |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

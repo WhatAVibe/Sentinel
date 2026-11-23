@@ -98,6 +98,87 @@ class _ActivityPageState extends State<ActivityPage> {
     }).length;
   }
 
+  void _showEvent(BuildContext context, ActivityEvent event) {
+    final details = event.detail ?? const <String, dynamic>{};
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: C.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.62,
+        minChildSize: 0.35,
+        maxChildSize: 0.94,
+        builder: (innerContext, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: C.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(categoryIcon(event.category), size: 18, color: categoryColor(event.category)),
+                const SizedBox(width: 8),
+                Text(event.category.toUpperCase(),
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        letterSpacing: 0.6,
+                        color: categoryColor(event.category),
+                        fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text('${formatClock(event.ts)} · ${event.severity}',
+                    style: const TextStyle(fontSize: 11, color: C.muted)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SelectableText(event.title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, height: 1.3)),
+            const SizedBox(height: 6),
+            Text(_dayLabel(event.time),
+                style: const TextStyle(fontSize: 11, color: C.muted)),
+            const SizedBox(height: 18),
+            if (details.isEmpty)
+              const Text('No extra details for this event.',
+                  style: TextStyle(fontSize: 12, color: C.muted))
+            else
+              for (final entry in details.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.key.replaceAll('_', ' ').toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 9.5,
+                              letterSpacing: 0.7,
+                              color: C.muted,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 3),
+                      SelectableText(
+                        '${entry.value}'.replaceAll('\\n', '\n'),
+                        style: const TextStyle(fontSize: 13, height: 1.45),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -238,14 +319,17 @@ class _ActivityPageState extends State<ActivityPage> {
                                     ),
                                   ),
                                 ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: C.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: C.border),
+                              GestureDetector(
+                                onTap: () => _showEvent(context, event),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: C.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: C.border),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: EventTile(event: event),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: EventTile(event: event),
                               ),
                               const SizedBox(height: 6),
                             ],

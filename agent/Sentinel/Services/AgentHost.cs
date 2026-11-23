@@ -44,6 +44,7 @@ public sealed class AgentHost : IDisposable
     private FullscreenMessageWindow? _fullscreenMessage;
     private SecureLockWindow? _secureLockWindow;
     private DateTime _lastAwayShotAt = DateTime.MinValue;
+    private DateTime _lastAwayAlertAt = DateTime.MinValue;
     private readonly List<LocalEventRecord> _localEvents = new();    private readonly object _eventLock = new();
     private long _eventSeq;
     private string _localPairCode = "";
@@ -471,10 +472,38 @@ public sealed class AgentHost : IDisposable
         }, null, TimeSpan.FromSeconds(delay), Timeout.InfiniteTimeSpan);
     }
 
-    private void OnUserActivity()
+    private void OnUserActivity(string reason)
     {
-        if (!Away || !Config.AwayShotOnActivity) return;
-        if (DateTime.UtcNow - _lastAwayShotAt < TimeSpan.FromSeconds(15)) return;
+        if (!Away) return;
+        var now = DateTime.UtcNow;
+        if (now - _lastAwayAlertAt > TimeSpan.FromSeconds(60))
+        {
+            _lastAwayAlertAt = now;
+            var (process, title) = Monitor.CurrentForeground();
+            var label = reason switch
+            {
+                "keyboard" => "Keyboard activity",
+                "mouse" => "Mouse activity",
+                _ => "Window focus change"
+            };
+            var where = string.IsNullOrWhiteSpace(title) ? process : title;
+            OnActivity(new ActivityEventData
+            {
+                Category = "security",
+                Severity = "warning",
+                Title = "Activity while away",
+                Detail = new()
+                {
+                    ["message"] = $"{label} in {where}",
+                    ["reason"] = reason,
+                    ["process"] = process,
+                    ["window"] = title,
+                    ["away_since"] = AwaySince?.ToLocalTime().ToString("HH:mm") ?? ""
+                }
+            });
+        }
+        if (!Config.AwayShotOnActivity) return;
+        if (now - _lastAwayShotAt < TimeSpan.FromSeconds(15)) return;
         ScheduleAwayShot(3);
     }
 
@@ -1036,7 +1065,7 @@ public sealed class AgentHost : IDisposable
             if (captures.Count == 0) return new CommandOutcome(false, "capture_failed");
 
             foreach (var capture in captures) UiState.I.AddShot(capture);
-            if (trigger == "away") _lastAwayShotAt = DateTime.UtcNow;
+            if (trigger is "away" or "activity") _lastAwayShotAt = DateTime.UtcNow;
 
             var uploaded = new List<string>();
             if (Config.Paired && !string.IsNullOrEmpty(Api.Token))
@@ -1055,13 +1084,16 @@ public sealed class AgentHost : IDisposable
                 }
             }
 
-            OnActivity(new ActivityEventData
+            if (trigger is not ("away" or "activity"))
             {
-                Category = "screenshot",
-                Severity = "info",
-                Title = $"Screenshot captured · {captures.Count} display(s)",
-                Detail = new() { ["trigger"] = trigger, ["uploaded"] = uploaded.Count }
-            });
+                OnActivity(new ActivityEventData
+                {
+                    Category = "screenshot",
+                    Severity = "info",
+                    Title = $"Screenshot captured · {captures.Count} display(s)",
+                    Detail = new() { ["trigger"] = trigger, ["uploaded"] = uploaded.Count }
+                });
+            }
 
             return new CommandOutcome(true, null, new CaptureBatch(captures.Count, uploaded.Count, uploaded, captures));
         }

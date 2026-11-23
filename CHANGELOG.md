@@ -3,6 +3,32 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [3.0.2] — 2026-11-23
+
+Installer 3.0.2 · Agent 2.0.2 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1 (12) · Flipper 1.1.0
+
+### Fixed
+
+- **Away mode now alerts on activity.** Any keyboard/mouse/window activity while away emits a throttled
+  `Activity while away` warning (once per minute) with the window/process and the away start time. Before,
+  activity only scheduled another silent screenshot, so the phone was never told someone was using the PC.
+- **Keystrokes are aggregated, not logged per key.** With capture enabled, the hook now counts keys and
+  emits one `Typing activity (N keys)` event per 30 seconds with the active window, instead of one event per
+  key. No key names are stored in that event; the history is far less noisy and more private.
+- **Automatic away screenshots are silent.** `Screenshot captured` events are no longer created for
+  `away`/`activity` captures, and the phone ignores any legacy automatic-shot events, so a locked PC no
+  longer spams notifications. Manual and remote captures still notify.
+- **Away banner** on the phone home shows `Away mode active`, the reason/since time, counts of captures and
+  activity alerts, and explains that only activity triggers notifications.
+- **Activity details are tappable.** Tapping any event opens a bottom sheet with the full title, category,
+  severity, timestamp and every detail field as selectable text (previously long lines were cut off).
+- **Disarm sheet is read-only.** The 6-digit code is displayed, not editable; the action is a single tap.
+  Removed the auto-submit-on-edit and the “type from an authenticator” copy.
+
+### Changed
+
+- Agent 2.0.2 and phone 2.0.2; installer 3.0.2. Relay and watch unchanged from 3.0.1.
+
 ## [3.0.1] — 2026-11-23
 
 Installer 3.0.1 · Agent 2.0.1 · Relay 2.0.1 · Phone 2.0.1 (19) · Watch 2.0.1 (12) · Flipper 1.1.0

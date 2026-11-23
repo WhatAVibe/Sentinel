@@ -407,7 +407,6 @@ class _CodeSheetState extends State<_CodeSheet> {
   late final TextEditingController _controller;
   late final Timer _timer;
   int _seconds = totpSecondsRemaining();
-  bool _edited = false;
   String? _error;
 
   @override
@@ -419,10 +418,8 @@ class _CodeSheetState extends State<_CodeSheet> {
       final seconds = totpSecondsRemaining();
       if (seconds == _seconds) return;
       _seconds = seconds;
-      if (!_edited) {
-        final code = context.read<AppState>().liveCode;
-        if (code.isNotEmpty) _controller.text = code;
-      }
+      final code = context.read<AppState>().liveCode;
+      if (code.isNotEmpty) _controller.text = code;
       if (mounted) setState(() {});
     });
   }
@@ -478,23 +475,26 @@ class _CodeSheetState extends State<_CodeSheet> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'This action needs your second factor. The code below comes from this app — or type it from any authenticator.',
+            'The code below is generated on this phone for this action. It cannot be edited.',
             style: TextStyle(fontSize: 12, color: C.muted, height: 1.4),
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 7,
-            style: const TextStyle(fontSize: 26, letterSpacing: 8, fontWeight: FontWeight.w600),
-            decoration: const InputDecoration(counterText: ''),
-            onChanged: (value) {
-              _edited = true;
-              setState(() => _error = null);
-              final code = value.replaceAll(' ', '');
-              if (code.length == 6) Navigator.pop(context, code);
-            },
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: C.elevated,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: C.border),
+            ),
+            child: Text(
+              _controller.text.replaceAll(' ', '').isEmpty
+                  ? '------'
+                  : _controller.text.replaceAll(' ', '').replaceAllMapped(
+                      RegExp(r'.{3}'), (m) => '${m.group(0)} ').trim(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 28, letterSpacing: 6, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(height: 8),
           Row(

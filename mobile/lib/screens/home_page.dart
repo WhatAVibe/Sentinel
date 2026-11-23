@@ -145,7 +145,16 @@ class HomePage extends StatelessWidget {
           ],
           if (device?.away == true) ...[
             const SizedBox(height: 10),
-            _AwayBanner(onDisarm: () => _disarm(context)),
+            _AwayBanner(
+              onDisarm: () => _disarm(context),
+              reason: device?.state.awayReason ?? '',
+              captures: state.events
+                  .where((e) =>
+                      e.category == 'screenshot' &&
+                      (e.detail?['trigger'] == 'away' || e.detail?['trigger'] == 'activity'))
+                  .length,
+              alerts: state.events.where((e) => e.title == 'Activity while away').length,
+            ),
           ],
           const SectionHeader('Quick actions'),
           GridView.count(
@@ -408,8 +417,17 @@ class _Bar extends StatelessWidget {
 
 class _AwayBanner extends StatelessWidget {
   final VoidCallback onDisarm;
+  final String reason;
+  final int captures;
+  final int alerts;
 
-  const _AwayBanner({required this.onDisarm});
+  const _AwayBanner({
+    required this.onDisarm,
+    this.reason = '',
+    this.captures = 0,
+    this.alerts = 0,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -419,26 +437,51 @@ class _AwayBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: C.warning.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.nightlight_round, color: C.warning, size: 22),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Away mode active',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.warning)),
-                SizedBox(height: 3),
-                Text('Screensaver engaged · events are being recorded',
-                    style: TextStyle(fontSize: 11, color: C.muted)),
-              ],
-            ),
+          Row(
+            children: [
+              const Icon(Icons.nightlight_round, color: C.warning, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Away mode active',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600, color: C.warning)),
+                    const SizedBox(height: 3),
+                    Text(
+                      reason.isEmpty
+                          ? 'Screensaver engaged · activity is being recorded'
+                          : 'Since $reason · activity is being recorded',
+                      style: const TextStyle(fontSize: 11, color: C.muted),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onDisarm,
+                style: TextButton.styleFrom(foregroundColor: C.warning),
+                child: const Text('Disarm'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: onDisarm,
-            style: TextButton.styleFrom(foregroundColor: C.warning),
-            child: const Text('Disarm'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Pill('$captures captures', color: C.muted, icon: Icons.photo_camera_outlined),
+              Pill('$alerts activity alerts',
+                  color: alerts > 0 ? C.warning : C.muted, icon: Icons.directions_run_rounded),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Automatic captures stay quiet — you are only notified when activity is detected on the PC.',
+            style: TextStyle(fontSize: 10.5, color: C.muted, height: 1.4),
           ),
         ],
       ),
@@ -591,4 +634,3 @@ class _MessageComposerState extends State<_MessageComposer> {
     );
   }
 }
-

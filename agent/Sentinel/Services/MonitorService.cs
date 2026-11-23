@@ -16,6 +16,12 @@ public sealed class MonitorService : IDisposable
     private readonly List<ManagementEventWatcher> _watchers = new();
     private readonly Dictionary<string, long> _connections = new();
     private readonly Dictionary<int, long> _keyStamps = new();
+    private readonly object _keyLock = new();
+    private int _pendingKeys;
+    private DateTime _pendingSince = DateTime.MinValue;
+    private string _pendingWindow = "";
+    private string _pendingProcess = "";
+    private System.Threading.Timer? _keyFlushTimer;
 
     private IntPtr _hwnd;
     private WndProc? _wndProc;
@@ -41,7 +47,7 @@ public sealed class MonitorService : IDisposable
     private bool _started;
 
     public event Action<ActivityEventData>? Activity;
-    public event Action? UserActivity;
+    public event Action<string>? UserActivity;
     public event Action<string, string>? PowerEvent;
 
     public MonitorService(AppConfig cfg) => _cfg = cfg;
@@ -78,6 +84,7 @@ public sealed class MonitorService : IDisposable
         }
         _keyboardProc = KeyboardHook;
         _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, GetModuleHandle(null), 0);
+        _keyFlushTimer = new System.Threading.Timer(_ => FlushKeys(), null, 30000, 30000);
         if (_cfg.CaptureNetwork)
         {
             _networkTimer = new System.Threading.Timer(_ => PollNetwork(), null, 8000, 20000);
@@ -115,6 +122,9 @@ public sealed class MonitorService : IDisposable
             UnhookWindowsHookEx(_keyboardHook);
             _keyboardHook = IntPtr.Zero;
         }
+        _keyFlushTimer?.Dispose();
+        _keyFlushTimer = null;
+        FlushKeys();
 
         foreach (var watcher in _watchers)
         {
@@ -238,7 +248,7 @@ public sealed class MonitorService : IDisposable
             });
 
             if (_cfg.DetectSearches) DetectSearch(title, process);
-            UserActivity?.Invoke();
+            UserActivity?.Invoke("window");
         }
         catch
         {
@@ -423,7 +433,7 @@ public sealed class MonitorService : IDisposable
                             ["window"] = title
                         }
                     });
-                    UserActivity?.Invoke();
+                    UserActivity?.Invoke("mouse");
                 }
             }
             catch
@@ -465,25 +475,18 @@ public sealed class MonitorService : IDisposable
                         if (_keyStamps.Count > 200) _keyStamps.Clear();
                     }
 
-                    var key = KeyName(vk);
-                    if (key != null)
+                    lock (_keyLock)
                     {
-                        var (process, title) = ForegroundInfo();
-                        Emit(new ActivityEventData
+                        if (_pendingKeys == 0)
                         {
-                            Category = "input",
-                            Severity = "info",
-                            Title = $"Key {key}",
-                            Detail = new()
-                            {
-                                ["key"] = key,
-                                ["modifiers"] = Modifiers(),
-                                ["process"] = process,
-                                ["window"] = title
-                            }
-                        });
-                        UserActivity?.Invoke();
+                            var (process, title) = ForegroundInfo();
+                            _pendingSince = DateTime.UtcNow;
+                            _pendingProcess = process;
+                            _pendingWindow = title;
+                        }
+                        _pendingKeys++;
                     }
+                    UserActivity?.Invoke("keyboard");
                 }
 
                 if (isUp && SecureLock.Active && !LockKeyAllowed(vk))
@@ -532,7 +535,7 @@ public sealed class MonitorService : IDisposable
                 Title = "Mouse moved",
                 Detail = new() { ["x"] = point.X, ["y"] = point.Y, ["process"] = process, ["window"] = title }
             });
-            UserActivity?.Invoke();
+            UserActivity?.Invoke("mouse");
         }
         catch
         {
@@ -749,6 +752,40 @@ public sealed class MonitorService : IDisposable
         {
             return "unknown";
         }
+    }
+
+    public (string Process, string Title) CurrentForeground() => ForegroundInfo();
+
+    private void FlushKeys()
+    {
+        int keys;
+        string window;
+        string process;
+        DateTime since;
+        lock (_keyLock)
+        {
+            if (_pendingKeys == 0) return;
+            keys = _pendingKeys;
+            window = _pendingWindow;
+            process = _pendingProcess;
+            since = _pendingSince;
+            _pendingKeys = 0;
+        }
+        var seconds = Math.Max(1, (int)(DateTime.UtcNow - since).TotalSeconds);
+        Emit(new ActivityEventData
+        {
+            Category = "input",
+            Severity = "info",
+            Title = $"Typing activity ({keys} keys)",
+            Detail = new()
+            {
+                ["keys"] = keys,
+                ["seconds"] = seconds,
+                ["process"] = process,
+                ["window"] = window,
+                ["message"] = $"{keys} keystrokes in {seconds}s in {window}"
+            }
+        });
     }
 
     private void Emit(ActivityEventData evt) => Activity?.Invoke(evt);

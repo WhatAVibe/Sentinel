@@ -250,6 +250,9 @@ class AppState extends ChangeNotifier {
           if (events.any((e) => e.id == item.id)) continue;
           events.insert(0, item);
           if (item.id > _lastEventId) _lastEventId = item.id;
+          final autoShot = item.category == 'screenshot' &&
+              (item.detail?['trigger'] == 'away' || item.detail?['trigger'] == 'activity');
+          if (autoShot) continue;
           if (item.severity == 'warning' ||
               item.category == 'security' ||
               item.category == 'message' ||

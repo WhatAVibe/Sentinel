@@ -97,6 +97,7 @@ class DeviceState {
   final int idleSeconds;
   final bool phonePresent;
   final bool secureLock;
+  final String awayReason;
 
   const DeviceState({
     this.monitors = 0,
@@ -105,6 +106,7 @@ class DeviceState {
     this.idleSeconds = 0,
     this.phonePresent = false,
     this.secureLock = false,
+    this.awayReason = '',
   });
 
   factory DeviceState.fromJson(Map<String, dynamic> json) => DeviceState(
@@ -114,6 +116,7 @@ class DeviceState {
         idleSeconds: asInt(json['idle_seconds']),
         phonePresent: asBool(json['phone_present']),
         secureLock: asBool(json['secure_lock']),
+        awayReason: asString(json['away_reason']),
       );
 }
 
@@ -461,7 +464,7 @@ const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
 /// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
 String sentinelDeviceName = '';
 
-const sentinelAppVersion = '2.0.1';
+const sentinelAppVersion = '2.0.2';
 const sentinelWatchVersion = '2.0.1';
 
 Future<void> loadDeviceName() async {
