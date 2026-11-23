@@ -704,6 +704,15 @@ def agent_events_history():
 def agent_events():
     body = _json_body()
     events = body.get("events") or []
+    limit = int(cfg().data.get("events_per_minute", 600))
+    accepted = []
+    for ev in events[:500]:
+        if not limiter.allow(f"events:{g.device_id}", limit, 60):
+            break
+        accepted.append(ev)
+    if events and not accepted:
+        return jsonify(error="rate_limited", retry_after=60), 429
+    events = accepted
     out = []
     for ev in events[:500]:
         title = str(ev.get("title") or "")[:400]
@@ -746,6 +755,19 @@ def agent_screenshots():
     f = request.files.get("file")
     if not f:
         return jsonify(error="file_required"), 400
+    trigger = (request.form.get("trigger") or "manual")[:32]
+    if not limiter.allow(
+        f"shots:{g.device_id}", int(cfg().data.get("screenshot_uploads_per_minute", 30)), 60
+    ):
+        return jsonify(error="rate_limited", retry_after=60), 429
+    if trigger not in ("away", "activity") and not limiter.allow(
+        f"shots-manual:{g.device_id}",
+        int(cfg().data.get("manual_screenshots_per_30m", 5)),
+        1800,
+    ):
+        return jsonify(
+            error="rate_limited", retry_after=1800, detail="manual screenshot limit"
+        ), 429
     raw = f.read()
     limit = int(cfg().data.get("max_upload_mb", 32)) * 1024 * 1024
     if len(raw) > limit:
@@ -774,10 +796,36 @@ def agent_screenshots():
         "VALUES (?,?,?,?,?,?,?,?,?,?)",
         (sid, row["device_id"], row["ts"], row["monitor"], row["monitor_name"], row["width"], row["height"], row["trigger"], row["path"], row["size"]),
     )
+    trim_screenshots(g.device_id)
     hub().push_to_device_clients(
         g.device_id, {"type": "screenshots", "screenshots": [serialize_shot(row)]}
     )
     return jsonify(ok=True, screenshot=serialize_shot(row))
+
+
+def trim_screenshots(device_id: str) -> int:
+    max_count = int(cfg().data.get("screenshot_max_per_device", 500))
+    max_bytes = int(cfg().data.get("screenshot_max_mb_per_device", 1024)) * 1024 * 1024
+    rows = db().all(
+        "SELECT id, path, size FROM screenshots WHERE device_id=? ORDER BY ts DESC, id DESC",
+        (device_id,),
+    )
+    total = 0
+    kept = 0
+    removed = 0
+    for row in rows:
+        size = int(row.get("size") or 0)
+        total += size
+        if kept < max_count and total <= max_bytes:
+            kept += 1
+            continue
+        try:
+            Path(row["path"]).unlink(missing_ok=True)
+        except OSError:
+            pass
+        db().execute("DELETE FROM screenshots WHERE id=?", (row["id"],))
+        removed += 1
+    return removed
 
 
 @bp.post("/agent/state")

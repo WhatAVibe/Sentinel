@@ -112,6 +112,14 @@ There is **no encryption at rest** (no SQLCipher, no encrypted screenshot bucket
 the relay's disk or a backup can recover all of it. Tokens are only stored as SHA-256 hashes and TOTP secrets
 are present in the `devices` table because the relay has to verify codes.
 
+End-to-end encryption is specified in [ENCRYPTION.md](ENCRYPTION.md) but **not enabled in the current
+clients**: the agent still uploads plaintext events, messages and screenshots. Do not treat the relay as
+zero-knowledge until that protocol ships and `enc_required` is set per device.
+
+The relay also enforces per-device screenshot quotas (500 images / 1 GB by default, oldest deleted), a
+manual-capture cap (5 per 30 minutes) and an event ingestion cap, so a compromised or buggy client cannot
+fill the disk indefinitely.
+
 Mitigations:
 
 - Run the relay on a host you control and trust, with full-disk encryption and encrypted backups.

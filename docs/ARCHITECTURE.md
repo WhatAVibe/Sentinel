@@ -279,5 +279,5 @@ Flipper                      Phone app                       Relay / Agent
 
 ## Versioning
 
-Agent 1.6.3 · server 1.3.4 · app 1.6.1 · watch 1.3.5, flipper 1.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 1.6.3 · server 1.3.5 · app 1.6.1 · watch 1.3.5, flipper 1.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.

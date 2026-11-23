@@ -22,6 +22,11 @@ DEFAULTS = {
     "boot_notify": True,
     "disk_alert_percent": 10,
     "battery_alert_percent": 15,
+    "screenshot_max_per_device": 500,
+    "screenshot_max_mb_per_device": 1024,
+    "manual_screenshots_per_30m": 5,
+    "screenshot_uploads_per_minute": 30,
+    "events_per_minute": 600,
 }
 
 
@@ -36,7 +41,7 @@ class Config:
         self.storage_dir = storage
         self.shots_dir = storage / "shots"
         self.db_path = storage / "sentinel.db"
-        self.version = "1.3.4"
+        self.version = "1.3.5"
 
     @classmethod
     def load(cls, path: str | os.PathLike) -> "Config":

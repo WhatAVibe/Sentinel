@@ -562,6 +562,7 @@ Common relay keys:
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
+| [docs/ENCRYPTION.md](docs/ENCRYPTION.md) | Relay-blind encryption design, key handshake, quotas |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and upgrade notes |
 | [flipper/README.md](flipper/README.md) | Flipper build, BLE setup, line protocol, WiFi board |
 | [watch/README.md](watch/README.md) | Watch build, install, tiles, config |
@@ -666,7 +667,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 | Component | Version | Stack |
 |---|---|---|
 | Windows agent | 1.6.3 | C# / .NET 10 WPF |
-| Relay server | 1.3.4 | Python / Flask / SQLite |
+| Relay server | 1.3.5 | Python / Flask / SQLite |
 | Phone app | 1.6.1 (build 17) | Flutter |
 | Wear OS app | 1.3.5 | Kotlin / Compose / Tiles / Complications |
 | Desktop installer | 2.1.3 | WPF setup and agent uninstaller |

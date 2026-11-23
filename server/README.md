@@ -4,7 +4,7 @@ Flask + SQLite relay for Sentinel. It stores devices, linked phones/watch, event
 and brokers commands between the PC agent and the mobile clients. It never sees your Windows password and
 cannot unlock the PC on its own.
 
-Version: **1.3.4** (`sentinel_server/config.py`). Protocol: `v1.2`.
+Version: **1.3.5** (`sentinel_server/config.py`). Protocol: `v1.2`.
 
 ## Run
 
@@ -32,6 +32,10 @@ The API lives under `/api/v1`, the status page at `/`. Default port `8765`.
 | `disk_alert_percent` | Free-space percentage that triggers a low-disk event (0 disables) |
 | `battery_alert_percent` | Battery percentage that triggers a low-battery event while discharging (0 disables) |
 | `ntfy_url` / `ntfy_topic` | Optional push notifications |
+| `screenshot_max_per_device` / `screenshot_max_mb_per_device` | Per-device screenshot count/byte budget; oldest are deleted |
+| `manual_screenshots_per_30m` | Manual/tray/remote screenshot cap |
+| `screenshot_uploads_per_minute` | Hard upload rate per device |
+| `events_per_minute` | Event ingestion cap per device |
 
 Data lives in `storage/sentinel.db` plus `storage/shots/`. Back up that directory.
 

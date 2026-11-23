@@ -17,5 +17,10 @@
   "power_check_seconds": 20,
   "boot_notify": true,
   "disk_alert_percent": 10,
-  "battery_alert_percent": 15
+  "battery_alert_percent": 15,
+  "screenshot_max_per_device": 500,
+  "screenshot_max_mb_per_device": 1024,
+  "manual_screenshots_per_30m": 5,
+  "screenshot_uploads_per_minute": 30,
+  "events_per_minute": 600
 }
