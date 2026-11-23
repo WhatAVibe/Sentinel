@@ -31,13 +31,16 @@ public partial class PhoneLinkWindow : Window
             if (link == null) throw new InvalidOperationException("no response");
             CodeText.Text = link.PairCode;
             var url = App.Host.Config.ServerUrl;
+            var dataKey = DataKey.Base64(App.Host.Config);
+            App.Host.SaveConfig();
             var payload = JsonSerializer.Serialize(new
             {
-                v = 1,
+                v = 2,
                 u = url,
                 r = link.RequestId,
                 c = link.PairCode,
-                n = App.Host.Config.DeviceName
+                n = App.Host.Config.DeviceName,
+                k = dataKey
             });
             using var generator = new QRCodeGenerator();
             using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);

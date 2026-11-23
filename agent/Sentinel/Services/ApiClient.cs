@@ -36,6 +36,7 @@ public sealed class ApiClient : IDisposable
     public string BaseUrl { get; set; } = "";
     public string Token { get; set; } = "";
     public bool AllowInsecureTls { get; set; }
+    public AppConfig? Config { get; set; }
 
     public event Action? Unauthorized;
     public event Action<string>? Trace;
@@ -124,7 +125,8 @@ public sealed class ApiClient : IDisposable
             device_name = deviceName,
             platform = "windows",
             fingerprint,
-            agent_version = AgentInfo.Version
+            agent_version = AgentInfo.Version,
+            enc_required = true
         }, ct)!;
 
     public Task<PairStatusResponse> PollPairAsync(string requestId, string requestToken, CancellationToken ct) =>
@@ -133,7 +135,7 @@ public sealed class ApiClient : IDisposable
             null, ct)!;
 
     public Task<LinkRequestResponse> CreateLinkRequestAsync(CancellationToken ct) =>
-        SendAsync<LinkRequestResponse>(HttpMethod.Post, "/api/v1/agent/link-request", new { }, ct)!;
+        SendAsync<LinkRequestResponse>(HttpMethod.Post, "/api/v1/agent/link-request", new { enc_required = true }, ct)!;
 
     public Task<HeartbeatResponse> HeartbeatAsync(bool away, bool locked, MetricsDto metrics, StateDto state, string? name, CancellationToken ct) =>
         SendAsync<HeartbeatResponse>(HttpMethod.Post, "/api/v1/agent/heartbeat", new
@@ -177,7 +179,14 @@ public sealed class ApiClient : IDisposable
 
     public Task PostMessageReplyAsync(string messageId, string? reply, string status, CancellationToken ct) =>
         SendAsync<JsonElement>(HttpMethod.Post, $"/api/v1/agent/messages/{messageId}/reply",
-            new { reply, status }, ct);
+            new { enc = EncryptJson("message", new { reply }), status }, ct);
+
+    private string EncryptJson(string kind, object payload)
+    {
+        if (Config == null) throw new InvalidOperationException("data key unavailable");
+        var json = JsonSerializer.Serialize(payload, Json);
+        return DataKey.Encrypt(Config, kind, Encoding.UTF8.GetBytes(json));
+    }
 
     public async Task<List<PhoneDto>> GetPhonesAsync(CancellationToken ct)
     {
@@ -213,16 +222,19 @@ public sealed class ApiClient : IDisposable
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
             using var form = new MultipartFormDataContent();
             var info = new FileInfo(capture.Path);
-            var stream = File.OpenRead(capture.Path);
+            if (Config == null) throw new InvalidOperationException("data key unavailable");
+            var encrypted = DataKey.Encrypt(Config, "shot", File.ReadAllBytes(capture.Path));
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(encrypted));
             var file = new StreamContent(stream);
-            file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-            form.Add(file, "file", info.Name);
+            file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            form.Add(file, "file", info.Name + ".enc");
             form.Add(new StringContent(DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString()), "ts");
             form.Add(new StringContent(capture.Monitor.ToString()), "monitor");
             form.Add(new StringContent(capture.MonitorName), "monitor_name");
             form.Add(new StringContent(capture.Width.ToString()), "width");
             form.Add(new StringContent(capture.Height.ToString()), "height");
             form.Add(new StringContent(capture.Trigger), "trigger");
+            form.Add(new StringContent("1"), "enc");
             request.Content = form;
 
             using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);

@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private bool _confirmed;
     private bool _skippedPair;
     private bool _busy;
+    private readonly string _dataKey = InstallerCore.NewDataKey();
 
     public MainWindow()
     {
@@ -36,6 +37,11 @@ public partial class MainWindow : Window
         var existing = InstallerCore.FindInstalled();
         _updateMode = existing != null && InstallerCore.HasConfig(existing);
         _installDir = existing ?? InstallerCore.DefaultInstallDir;
+        if (_updateMode)
+        {
+            var existingKey = InstallerCore.ReadConfigDataKey(_installDir);
+            if (!string.IsNullOrEmpty(existingKey)) _dataKey = existingKey;
+        }
         LocationBox.Text = _installDir;
         ServerBox.Text = TryReadServer(_installDir);
         VersionText.Text = $"Setup {InstallerCore.ProductVersion}";
@@ -225,7 +231,7 @@ public partial class MainWindow : Window
             _pairRequestToken = response.TryGetProperty("request_token", out var token) ? token.GetString() ?? "" : "";
             PairCodeText.Text = response.TryGetProperty("pair_code", out var code) ? code.GetString() ?? "" : "";
             PairStatusText.Text = "Open Sentinel on the device and enter this code, or scan the QR code. Waiting for approval…";
-            RenderPairQr(NormalizeUrl(ServerBox.Text), _pairRequestId, PairCodeText.Text);
+            RenderPairQr(NormalizeUrl(ServerBox.Text), _pairRequestId, PairCodeText.Text, _dataKey);
             _pairTimer.Start();
         }
         catch (Exception ex)
@@ -306,17 +312,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RenderPairQr(string serverUrl, string requestId, string pairCode)
+    private void RenderPairQr(string serverUrl, string requestId, string pairCode, string dataKey)
     {
         try
         {
             var payload = JsonSerializer.Serialize(new
             {
-                v = 1,
+                v = 2,
                 u = serverUrl,
                 r = requestId,
                 c = pairCode,
-                n = Environment.MachineName
+                n = Environment.MachineName,
+                k = dataKey
             });
             using var generator = new QRCodeGenerator();
             using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
@@ -405,7 +412,7 @@ public partial class MainWindow : Window
                 var totpSecret = _totpSecret;
                 var master = MasterBox.Password;
                 await Task.Run(() => InstallerCore.WriteConfig(
-                    _installDir, serverUrl, deviceId, agentToken, totpSecret, master, updates, startup, false));
+                    _installDir, serverUrl, deviceId, agentToken, totpSecret, master, _dataKey, updates, startup, false));
             }
             else
             {
@@ -414,6 +421,8 @@ public partial class MainWindow : Window
                 {
                     SetConfigBool(_installDir, "CheckForUpdates", updates);
                     SetConfigBool(_installDir, "StartWithWindows", startup);
+                    // Update/repair keeps the existing DEK; only a missing one is filled in.
+                    InstallerCore.EnsureDataKey(_installDir, _dataKey);
                 });
             }
             InstallProgress.Value = 80;

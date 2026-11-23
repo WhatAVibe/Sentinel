@@ -193,15 +193,24 @@ public sealed class ActivityEventData
     public string Severity { get; init; } = "info";
     public string Title { get; init; } = "";
     public Dictionary<string, object?>? Detail { get; init; }
+    public string? Enc { get; init; }
 
-    public object ToWire() => new
-    {
-        ts = Ts,
-        category = Category,
-        severity = Severity,
-        title = Title,
-        detail = Detail
-    };
+    public object ToWire() => string.IsNullOrEmpty(Enc)
+        ? new
+        {
+            ts = Ts,
+            category = Category,
+            severity = Severity,
+            title = Title,
+            detail = Detail
+        }
+        : new
+        {
+            ts = Ts,
+            category = Category,
+            severity = Severity,
+            enc = Enc
+        };
 }
 
 public sealed class CaptureResult

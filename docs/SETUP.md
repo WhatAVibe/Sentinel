@@ -6,11 +6,11 @@ Every component is published on **[Releases](https://github.com/WhatAVibe/Sentin
 
 | Component | Asset |
 |---|---|
-| Windows agent + installer | `Sentinel-Setup-2.1.3.exe` |
-| Windows agent only | `Sentinel-Agent-1.6.3-win-x64.exe` |
-| Phone (Android 8+) | `Sentinel-Phone-1.6.1.apk` |
-| Wear OS 3+ | `Sentinel-Watch-1.3.5.apk` |
-| Relay | `Sentinel-Relay-1.3.4.zip` |
+| Windows agent + installer | `Sentinel-Setup-3.0.0.exe` |
+| Windows agent only | `Sentinel-Agent-2.0.0-win-x64.exe` |
+| Phone (Android 8+) | `Sentinel-Phone-2.0.0.apk` |
+| Wear OS 3+ | `Sentinel-Watch-2.0.0.apk` |
+| Relay | `Sentinel-Relay-2.0.0.zip` |
 | Checksums | `SHA256SUMS.txt` |
 
 The relay is the only piece that has to be reachable from the internet; the PC and phone connect outbound
@@ -188,11 +188,20 @@ normal path such as `Documents\GitHub\Sentinel` can use `flutter` directly.
 
 ## 4. Pairing
 
-1. PC: pairing window → server URL → **Connect**. A QR code and 6-character code appear.
-2. Phone: **Scan QR**, or **Code** → enter the server URL and the code.
-3. On approval the PC asks for the 6-digit code shown on the phone; entering it confirms the device automatically.
-4. Extra phone: PC *Settings → Pair another phone*. The window watches for the approval and asks for the
-   code as soon as the device approves, then closes itself once it is confirmed.
+3.0.0 encrypts events, messages and screenshots with a key that is delivered only by QR, so **scan the QR**.
+
+1. PC: pairing window → server URL → **Connect**. A v2 QR appears (it contains the data key) plus the
+   6-character code.
+2. Phone: **Scan QR**. The phone stores the key and approves the request.
+3. The PC asks for the 6-digit code shown on the phone; entering it confirms the device. The key never goes
+   through the relay.
+4. Extra phone: PC *Settings → Pair another phone* and scan the new QR.
+5. Watch: phone *Settings → Pair a Wear OS watch*. The phone asks the relay for a companion token and sends
+   the URL, token, TOTP secret and data key over the Wear OS Data Layer. No typing on the watch; it opens on
+   the dashboard once the message lands.
+
+Typing a URL + 6-character code cannot carry the key, so the phone refuses that path for encrypted PCs. ADB
+direct mode is loopback-only and stays plaintext.
 
 ## 5. ADB direct link (optional)
 

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -126,29 +128,7 @@ class _ShotCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Image.network(
-                state.imageUrl(shot),
-                headers: state.imageHeaders,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (_, __, ___) => Container(
-                  color: C.elevated,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.broken_image_outlined, color: C.muted, size: 22),
-                ),
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: C.elevated,
-                    alignment: Alignment.center,
-                    child: const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
+              child: _ShotImage(shot: shot, state: state, expand: true),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
@@ -214,22 +194,88 @@ class ShotViewer extends StatelessWidget {
         child: InteractiveViewer(
           minScale: 0.8,
           maxScale: 6,
-          child: Image.network(
-            state.imageUrl(shot),
-            headers: state.imageHeaders,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.broken_image_outlined,
-              color: C.muted,
-              size: 40,
-            ),
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return const Center(child: CircularProgressIndicator());
-            },
-          ),
+          child: _ShotImage(shot: shot, state: state, expand: false, fit: BoxFit.contain),
         ),
       ),
+    );
+  }
+}
+
+class _ShotImage extends StatefulWidget {
+  final Shot shot;
+  final AppState state;
+  final bool expand;
+  final BoxFit fit;
+
+  const _ShotImage({
+    required this.shot,
+    required this.state,
+    this.expand = false,
+    this.fit = BoxFit.cover,
+  });
+
+  @override
+  State<_ShotImage> createState() => _ShotImageState();
+}
+
+class _ShotImageState extends State<_ShotImage> {
+  late Future<Uint8List> _future = widget.state.shotBytes(widget.shot);
+
+  @override
+  void didUpdateWidget(covariant _ShotImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.shot.id != widget.shot.id || oldWidget.state != widget.state) {
+      _future = widget.state.shotBytes(widget.shot);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Container(
+            color: C.elevated,
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: C.muted,
+              size: widget.expand ? 22 : 40,
+            ),
+          );
+        }
+        final data = snapshot.data;
+        if (data == null) {
+          return widget.expand
+              ? Container(
+                  color: C.elevated,
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : const Center(child: CircularProgressIndicator());
+        }
+        return Image.memory(
+          data,
+          fit: widget.fit,
+          width: widget.expand ? double.infinity : null,
+          height: widget.expand ? double.infinity : null,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => Container(
+            color: C.elevated,
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: C.muted,
+              size: widget.expand ? 22 : 40,
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -9,6 +9,7 @@ import 'diagnostics.dart';
 import 'notifier.dart';
 import 'store.dart';
 import 'totp.dart';
+import 'watch_bridge.dart';
 import 'widgets_bridge.dart';
 
 class AppState extends ChangeNotifier {
@@ -52,6 +53,8 @@ class AppState extends ChangeNotifier {
   Timer? _poll;
   Timer? _confirmPoll;
   int _lastEventId = 0;
+  final Map<String, Uint8List> _shotCache = {};
+  final List<String> _shotCacheOrder = [];
 
   bool get paired => session != null;
 
@@ -105,6 +108,8 @@ class AppState extends ChangeNotifier {
     shotsHasMore = false;
     connected = false;
     _lastEventId = 0;
+    _shotCache.clear();
+    _shotCacheOrder.clear();
     if (persist) {
       sessions.removeWhere((s) => s.deviceId == value.deviceId);
       sessions.add(value);
@@ -257,7 +262,12 @@ class AppState extends ChangeNotifier {
       case 'message':
         final message = asMap(event.data);
         final reply = asString(message['reply']);
-        DiagLog.instance.add('message', reply.isEmpty ? 'message ${asString(message['status'])}' : 'reply: $reply');
+        final failed = asBool(message['enc_failed']);
+        DiagLog.instance.add(
+          'message',
+          failed ? 'message could not be decrypted' : 'message ${asString(message['status'])}',
+          error: failed,
+        );
         if (reply.isNotEmpty) {
           Notifier.show('Reply from your PC', reply);
         }
@@ -333,6 +343,8 @@ class AppState extends ChangeNotifier {
     device = null;
     events = [];
     shots = [];
+    _shotCache.clear();
+    _shotCacheOrder.clear();
     connected = false;
     relayOnline = false;
     locked = false;
@@ -511,6 +523,8 @@ class AppState extends ChangeNotifier {
     device = null;
     events = [];
     shots = [];
+    _shotCache.clear();
+    _shotCacheOrder.clear();
     connected = false;
     relayOnline = false;
     pendingConfirmation = false;
@@ -549,6 +563,8 @@ class AppState extends ChangeNotifier {
     device = null;
     events = [];
     shots = [];
+    _shotCache.clear();
+    _shotCacheOrder.clear();
     connected = false;
     relayOnline = false;
     notifyListeners();
@@ -568,15 +584,60 @@ class AppState extends ChangeNotifier {
 
   int get codeSeconds => totpSecondsRemaining();
 
-  String imageUrl(Shot shot) {
-    if (shot.url.startsWith('http')) return shot.url;
-    final base = session?.baseUrl ?? '';
-    return '$base${shot.url}';
+  Future<Uint8List> shotBytes(Shot shot) async {
+    final cached = _shotCache[shot.id];
+    if (cached != null) return cached;
+    final current = client;
+    if (current == null) throw const ApiError(400, 'not_paired');
+    final bytes = await current.fetchShotBytes(shot);
+    _shotCache[shot.id] = bytes;
+    _shotCacheOrder.remove(shot.id);
+    _shotCacheOrder.add(shot.id);
+    while (_shotCacheOrder.length > 32) {
+      _shotCache.remove(_shotCacheOrder.removeAt(0));
+    }
+    return bytes;
   }
 
-  Map<String, String> get imageHeaders => {
-        if (session != null) 'Authorization': 'Bearer ${session!.token}',
-      };
+  Future<({bool ok, String message})> pairWatch({String name = 'Watch'}) async {
+    final current = client;
+    final active = session;
+    if (current == null || active == null) {
+      return (ok: false, message: 'Pair with your PC first.');
+    }
+    if (active.isDirect) {
+      return (ok: false, message: 'Watches pair through the relay, not the direct ADB link.');
+    }
+    if (active.dataKey.isEmpty) {
+      return (ok: false, message: "Scan the PC's QR code to receive the encryption key first.");
+    }
+    try {
+      final companion = await current.addCompanion(name: name, kind: 'watch');
+      if (companion.token.isEmpty) {
+        return (ok: false, message: 'The relay did not return a watch token. Update the relay.');
+      }
+      final sent = await WatchBridge.pair(
+        baseUrl: active.baseUrl,
+        deviceId: active.deviceId,
+        deviceName: active.deviceName,
+        token: companion.token,
+        secret: active.totpSecret,
+        dataKey: active.dataKey,
+        name: name,
+      );
+      if (!sent) {
+        return (
+          ok: false,
+          message: 'No watch answered. Enable Bluetooth and pair the watch in Wear OS first.',
+        );
+      }
+      DiagLog.instance.add('watch', 'Pairing payload sent to watch');
+      return (ok: true, message: 'Watch paired. Sent it the encryption key over Bluetooth.');
+    } catch (error) {
+      if (error is ApiError) return (ok: false, message: error.message);
+      return (ok: false, message: describeError(error));
+    }
+  }
 
   Future<void> setNotificationEnabled(String key, bool value) async {
     notifications[key] = value;

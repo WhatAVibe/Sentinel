@@ -15,7 +15,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
 [![Release](https://img.shields.io/github/v/release/WhatAVibe/Sentinel?style=flat-square&color=6EE7A8&label=release)](https://github.com/WhatAVibe/Sentinel/releases/latest)
-[![Version](https://img.shields.io/badge/version-2.1.3-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-3.0.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Download](#download) · [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -36,17 +36,17 @@ unsigned; Windows SmartScreen will ask you to confirm the publisher.
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows 10/11 x64** | [Sentinel-Setup-2.1.3.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.3.exe) | Installer with the self-contained agent 1.6.3, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
-| Windows (agent only) | [Sentinel-Agent-1.6.3-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-1.6.3-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
-| **Android 8.0+** | [Sentinel-Phone-1.6.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.6.1.apk) | Flutter phone app |
-| Wear OS 3+ (API 30) | [Sentinel-Watch-1.3.5.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-1.3.5.apk) | Companion watch app, four tiles and complications |
-| Relay server | [Sentinel-Relay-1.3.4.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-1.3.4.zip) | Flask + SQLite relay source; Python 3.10+ |
+| **Windows 10/11 x64** | [Sentinel-Setup-3.0.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.0.exe) | Installer with the self-contained agent 2.0.0, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
+| Windows (agent only) | [Sentinel-Agent-2.0.0-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-2.0.0-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
+| **Android 8.0+** | [Sentinel-Phone-2.0.0.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.0.apk) | Flutter phone app |
+| Wear OS 3+ (API 30) | [Sentinel-Watch-2.0.0.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-2.0.0.apk) | Companion watch app, four tiles and complications |
+| Relay server | [Sentinel-Relay-2.0.0.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-2.0.0.zip) | Flask + SQLite relay source; Python 3.10+ |
 | Flipper Zero | [Sentinel-Flipper-1.1.0.fap](https://github.com/WhatAVibe/Sentinel/releases/download/flipper-v1.1.0/Sentinel-Flipper-1.1.0.fap) | Separate `flipper-v1.1.0` release (BLE bridge) |
 | Checksums | [SHA256SUMS.txt](https://github.com/WhatAVibe/Sentinel/releases/latest/download/SHA256SUMS.txt) | Verify with `sha256sum -c SHA256SUMS.txt` |
 
-Install the phone app with `adb install -r Sentinel-Phone-1.6.1.apk`, or open the APK on the phone. The watch
+Install the phone app with `adb install -r Sentinel-Phone-2.0.0.apk`, or open the APK on the phone. The watch
 app goes over Wireless debugging: `adb connect <watch-ip>:<port>` then `adb install -r
-Sentinel-Watch-1.3.5.apk`. The relay is a plain folder — unzip it and follow
+Sentinel-Watch-2.0.0.apk`. The relay is a plain folder — unzip it and follow
 [Quick start](#1-relay-server) below.
 
 ---
@@ -166,6 +166,7 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **Flipper Zero** | Lock, secure lock, away mode, screenshot and the live code, over BLE with the phone as the network |
 | **Phone management** | List, inspect and revoke linked phones from either side |
 | **No cloud** | Bearer tokens, hashed server-side, DPAPI on Windows, Keystore on Android |
+| **E2E encrypted** | Events, messages and screenshots are AES-256-GCM encrypted on the PC; the relay never sees the key |
 
 ---
 
@@ -195,6 +196,24 @@ flowchart LR
 - The **phone/watch** never talk to the PC directly unless you enable the optional ADB direct link.
 - The **Flipper** has no network of its own: it talks to the phone over Bluetooth and the phone relays its
   commands, so the relay token and TOTP secret never leave the phone.
+
+---
+
+## End-to-end encryption
+
+Since **3.0.0**, events, messages and screenshots are encrypted on the PC with a per-PC 32-byte data key
+(AES-256-GCM, AAD-bound per record type). The key is delivered to a phone only through the **pairing QR** and
+to the watch only through the phone over Bluetooth. The relay stores ciphertext and never receives the key,
+so a relay operator — including someone hosting a relay for other people — cannot read your activity,
+messages or screenshots.
+
+- Pairing is QR-based for encrypted devices. Typing a URL + 6-character code cannot carry a key without
+  handing it to the relay, so the phone refuses that path for encrypted PCs.
+- The watch is added from the phone: **Settings → Pair a Wear OS watch**, which asks the relay for a
+  companion token and sends URL/token/secret/key over the Wear OS Data Layer. No watch keyboard.
+- The relay only sees routing metadata: device name, timestamps, event category/severity, message
+  direction/status, screenshot size/dimensions/count, and relay-generated system alerts (offline, low disk,
+  low battery). See [docs/ENCRYPTION.md](docs/ENCRYPTION.md) and [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
@@ -291,7 +310,7 @@ again. Docker: `docker compose stop sentinel`, restore into the `sentinel-data` 
 
 ### 2. Windows agent
 
-Run **[Sentinel-Setup-2.1.3.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-2.1.3.exe)**
+Run **[Sentinel-Setup-3.0.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.0.exe)**
 and follow the wizard: terms, install location, recovery password, relay address, pairing. Re-running the
 setup offers **Update / Repair** or **Uninstall**.
 
@@ -339,7 +358,7 @@ Silent fleet installs: `Sentinel Setup.exe --silent --relay <url> --recovery <pa
 
 ### 3. Phone app
 
-Install **[Sentinel-Phone-1.6.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-1.6.1.apk)**
+Install **[Sentinel-Phone-2.0.0.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.0.apk)**
 (Android 8.0+), or build it:
 
 ```powershell
@@ -367,7 +386,7 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 
 ### 5. Wear OS app (optional)
 
-Install **[Sentinel-Watch-1.3.5.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-1.3.5.apk)**,
+Install **[Sentinel-Watch-2.0.0.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-2.0.0.apk)**,
 or build it:
 
 ```powershell
@@ -666,11 +685,11 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 1.6.3 | C# / .NET 10 WPF |
-| Relay server | 1.3.5 | Python / Flask / SQLite |
-| Phone app | 1.6.1 (build 17) | Flutter |
-| Wear OS app | 1.3.5 | Kotlin / Compose / Tiles / Complications |
-| Desktop installer | 2.1.3 | WPF setup and agent uninstaller |
+| Windows agent | 2.0.0 | C# / .NET 10 WPF |
+| Relay server | 2.0.0 | Python / Flask / SQLite |
+| Phone app | 2.0.0 (build 18) | Flutter |
+| Wear OS app | 2.0.0 | Kotlin / Compose / Tiles / Complications |
+| Desktop installer | 3.0.0 | WPF setup and agent uninstaller |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,

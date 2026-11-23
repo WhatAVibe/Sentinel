@@ -12,8 +12,8 @@ android {
         applicationId = "com.whatavibe.sentinelwatch"
         minSdk = 30
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.3.5"
+        versionCode = 11
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -62,6 +62,7 @@ dependencies {
     implementation("androidx.wear.protolayout:protolayout-proto:1.2.0")
     implementation("androidx.wear.tiles:tiles-material:1.4.0")
     implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
     implementation("com.google.guava:guava:33.3.1-android") {
         exclude(group = "com.google.guava", module = "listenablefuture")
     }

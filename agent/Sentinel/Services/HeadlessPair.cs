@@ -13,6 +13,8 @@ public static class HeadlessPair
             var health = await ApiClient.PingAsync(serverUrl, insecure, CancellationToken.None);
             if (health == null) return 2;
 
+            DataKey.GetOrCreate(host.Config);
+            host.SaveConfig();
             var request = await api.CreatePairAsync(host.Config.DeviceName, host.Config.DeviceId, CancellationToken.None);
             var report = new
             {

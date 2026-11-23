@@ -57,6 +57,7 @@ internal static class SilentInstall
                 throw new InvalidOperationException("--recovery requires at least 8 characters");
 
             var dir = options.Directory ?? InstallerCore.FindInstalled() ?? InstallerCore.DefaultInstallDir;
+            var dataKey = InstallerCore.NewDataKey();
             report["install_dir"] = dir;
             report["relay"] = relay.ToString();
 
@@ -109,6 +110,7 @@ internal static class SilentInstall
                 agentToken,
                 totpSecret,
                 options.Recovery,
+                dataKey,
                 checkForUpdates: true,
                 startWithWindows: options.StartWithWindows,
                 tutorialDone: true);

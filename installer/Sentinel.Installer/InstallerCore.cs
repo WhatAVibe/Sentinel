@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Win32;
 
 namespace Sentinel.Installer;
@@ -26,7 +27,7 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "2.1.3";
+    public const string ProductVersion = "3.0.0";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
     public const string ReleasesUrl = Repository + "/releases/latest";
     public const string RelayGuideUrl = Repository + "/blob/main/docs/SETUP.md";
@@ -148,6 +149,7 @@ public static class InstallerCore
         string agentToken,
         string totpSecret,
         string masterPassword,
+        string dataKey,
         bool checkForUpdates,
         bool startWithWindows,
         bool tutorialDone)
@@ -162,6 +164,7 @@ public static class InstallerCore
             ["ProtectedLocalToken"] = "",
             ["ProtectedSecurityKey"] = "",
             ["ProtectedMasterPassword"] = ProtectMasterPassword(masterPassword),
+            ["ProtectedDataKey"] = Protect(dataKey),
             ["CheckForUpdates"] = checkForUpdates,
             ["StartWithWindows"] = startWithWindows,
             ["TutorialDone"] = tutorialDone
@@ -183,6 +186,41 @@ public static class InstallerCore
         catch
         {
             return ("", "");
+        }
+    }
+
+    public static string NewDataKey() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+    public static string ReadConfigDataKey(string dir)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(ConfigPath(dir)));
+            return document.RootElement.TryGetProperty("ProtectedDataKey", out var key)
+                ? Unprotect(key.GetString() ?? "")
+                : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    public static void EnsureDataKey(string dir, string dataKey)
+    {
+        try
+        {
+            var path = ConfigPath(dir);
+            if (!File.Exists(path)) return;
+            var node = JsonNode.Parse(File.ReadAllText(path))?.AsObject();
+            if (node == null) return;
+            if (!string.IsNullOrWhiteSpace(node["ProtectedDataKey"]?.GetValue<string>())) return;
+            node["ProtectedDataKey"] = Protect(dataKey);
+            File.WriteAllText(path, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch
+        {
+            // leave the existing config untouched
         }
     }
 
@@ -282,7 +320,8 @@ public static class InstallerCore
             device_name = deviceName,
             platform = "windows",
             fingerprint = "sentinel-installer",
-            agent_version = ProductVersion
+            agent_version = ProductVersion,
+            enc_required = true
         });
         using var response = await Http.SendAsync(request).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

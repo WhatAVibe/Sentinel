@@ -15,14 +15,16 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8799"
 FAILS = []
 
 
-def call(method, path, body=None, token=None, expect=200):
+def call(method, path, body=None, token=None, expect=200, headers=None):
     data = None
-    headers = {"Content-Type": "application/json"}
+    hdrs = {"Content-Type": "application/json"}
+    if headers:
+        hdrs.update(headers)
     if token:
-        headers["Authorization"] = f"Bearer {token}"
+        hdrs["Authorization"] = f"Bearer {token}"
     if body is not None:
         data = json.dumps(body).encode()
-    req = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
+    req = urllib.request.Request(BASE + path, data=data, headers=hdrs, method=method)
     try:
         with urllib.request.urlopen(req, timeout=40) as resp:
             raw = resp.read()
@@ -78,7 +80,7 @@ def main():
     health = call("GET", "/api/v1/health")
     check("health", bool(health and health.get("ok")), str(health))
 
-    req = call("POST", "/api/v1/pair/request", {"device_name": "SMOKE-PC", "platform": "windows", "agent_version": "test"})
+    req = call("POST", "/api/v1/pair/request", {"device_name": "SMOKE-PC", "platform": "windows", "agent_version": "test", "enc_required": False})
     check("pair request", bool(req and req.get("pair_code")), str(req))
     rid, code, rtoken = req["request_id"], req["pair_code"], req["request_token"]
 
@@ -219,9 +221,125 @@ def main():
     check("exit reaches agent", bool(got and got["type"] == "agent_exit" and got["args"].get("code")),
           str(poll))
 
+    # encrypted device: relay stores only opaque ciphertext
+    ereq = call("POST", "/api/v1/pair/request",
+                {"device_name": "SMOKE-ENC-PC", "platform": "windows", "agent_version": "test",
+                 "enc_required": True})
+    check("encrypted pair request", bool(ereq and ereq.get("pair_code")), str(ereq))
+    erid, ecode, ertoken = ereq["request_id"], ereq["pair_code"], ereq["request_token"]
+
+    elookup = call("POST", "/api/v1/pair/lookup", {"pair_code": ecode})
+    check("enc_required exposed on lookup", bool(elookup and elookup.get("enc_required") is True), str(elookup))
+
+    eappr = call("POST", "/api/v1/pair/approve",
+                 {"request_id": erid, "pair_code": ecode, "mobile_name": "Enc Phone"})
+    check("enc_required returned on approve",
+          bool(eappr and eappr.get("enc_required") is True
+               and eappr.get("device", {}).get("enc_required") is True), str(eappr))
+    emobile = eappr["mobile_token"]
+    edid = eappr["device"]["id"]
+    est = call("GET", f"/api/v1/pair/status?request_id={erid}&token={ertoken}")
+    eagent = est["agent_token"]
+    ephones = call("GET", "/api/v1/agent/phones", token=eagent)
+    call("POST", f"/api/v1/agent/phones/{ephones['phones'][0]['id']}/confirm",
+         {"code": totp_now(eappr["totp_secret"])}, eagent)
+
+    plain_ev = call("POST", "/api/v1/agent/events",
+                    {"events": [{"ts": int(time.time() * 1000), "category": "window",
+                                 "severity": "info", "title": "plaintext leak"}]},
+                    eagent, expect=400)
+    check("enc_required rejects plaintext events", plain_ev is not None)
+
+    mixed = call("POST", "/api/v1/agent/events",
+                 {"events": [{"title": "plaintext leak"},
+                             {"enc": "ZW5jLWV2ZW50", "category": "window"}]},
+                 eagent, expect=400)
+    check("enc_required rejects mixed batch", mixed is not None)
+
+    evs = call("GET", f"/api/v1/devices/{edid}/events?since=0", token=emobile)
+    check("rejected batch stores nothing", bool(evs and evs["events"] == []), str(evs))
+
+    opaque = "ZW5jLWV2ZW50LWNpcGhlcnRleHQ="
+    enc_ev = call("POST", "/api/v1/agent/events",
+                  {"events": [{"ts": int(time.time() * 1000), "category": "window",
+                               "severity": "info", "title": "must be dropped",
+                               "detail": {"secret": "dropped"}, "enc": opaque}]},
+                  eagent)
+    check("encrypted event accepted", bool(enc_ev and enc_ev.get("count") == 1), str(enc_ev))
+
+    evs = call("GET", f"/api/v1/devices/{edid}/events?since=0", token=emobile)
+    enc_row = evs["events"][-1] if evs and evs.get("events") else {}
+    check("encrypted event stored", enc_row.get("enc") == opaque, str(enc_row))
+    check("encrypted event title empty", enc_row.get("title") == "", str(enc_row))
+    check("encrypted event detail cleared", enc_row.get("detail") is None, str(enc_row))
+
+    try:
+        upload("/api/v1/agent/screenshots", eagent,
+               {"monitor": 1, "width": 10, "height": 10, "trigger": "manual"}, b"\x89PNGplain")
+        plain_shot_ok = False
+    except urllib.error.HTTPError as exc:
+        plain_shot_ok = exc.code == 400
+    check("enc_required rejects plaintext screenshots", plain_shot_ok)
+
+    cipher = bytes(range(32)) + b"not-a-png-ciphertext"
+    eshot = upload("/api/v1/agent/screenshots", eagent,
+                   {"monitor": 1, "monitor_name": "ENC", "width": 10, "height": 10,
+                    "trigger": "manual", "enc": "1"}, cipher)
+    check("encrypted screenshot upload", bool(eshot and eshot["screenshot"].get("enc") is True), str(eshot))
+    esid = eshot["screenshot"]["id"]
+
+    eshots = call("GET", f"/api/v1/devices/{edid}/screenshots", token=emobile)
+    check("encrypted screenshot listed",
+          bool(eshots and eshots["screenshots"] and eshots["screenshots"][0].get("enc") is True),
+          str(eshots)[:300])
+
+    req = urllib.request.Request(f"{BASE}/api/v1/devices/{edid}/screenshots/{esid}/file?token={emobile}")
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        eblob = resp.read()
+        etype = resp.headers.get("Content-Type", "")
+    check("encrypted screenshot bytes match ciphertext", eblob == cipher, f"{len(eblob)} bytes")
+    check("encrypted screenshot content type", etype.startswith("application/octet-stream"), etype)
+
+    enc_msg = call("POST", f"/api/v1/devices/{edid}/message",
+                   {"enc": "ZW5jLW1zZw==", "kind": "toast", "allow_reply": True}, emobile)
+    enc_args = (enc_msg or {}).get("command", {}).get("args", {})
+    check("encrypted message accepted",
+          bool(enc_msg and enc_msg["message"].get("enc") == "ZW5jLW1zZw=="
+               and enc_msg["message"].get("title") is None
+               and enc_msg["message"].get("body") is None), str(enc_msg)[:300])
+    check("encrypted message forwards enc",
+          enc_args.get("enc") == "ZW5jLW1zZw==" and "text" not in enc_args
+          and enc_args.get("allow_reply") is True, str(enc_args))
+    enc_mid = enc_msg["message"]["id"]
+
+    plain_msg = call("POST", f"/api/v1/devices/{edid}/message", {"body": "plaintext leak"},
+                     emobile, expect=400)
+    check("enc_required rejects plaintext messages", plain_msg is not None)
+
+    enc_reply = call("POST", f"/api/v1/agent/messages/{enc_mid}/reply",
+                     {"enc": "ZW5jLXJlcGx5", "status": "replied"}, eagent)
+    check("encrypted reply stored",
+          bool(enc_reply and enc_reply["message"].get("enc") == "ZW5jLXJlcGx5"
+               and enc_reply["message"].get("reply") is None), str(enc_reply)[:300])
+
+    comp = call("POST", f"/api/v1/devices/{did}/companions",
+                {"name": "Smoke Watch", "kind": "watch"}, mobile)
+    check("companion watch created",
+          bool(comp and comp.get("mobile_token") and comp.get("mobile_id")
+               and comp.get("device_id") == did and comp.get("enc_required") is False), str(comp)[:300])
+    check("companion exposes no key",
+          bool(comp and not any(k in comp for k in ("key", "data_key", "dek"))))
+    watch = comp["mobile_token"]
+    wme = call("GET", "/api/v1/me", token=watch, headers={"User-Agent": "SentinelWatch"})
+    check("companion token works", bool(wme and wme["device"]["id"] == did), str(wme)[:200])
+    listed = call("GET", f"/api/v1/devices/{did}/phones", token=mobile)
+    watch_row = next((p for p in listed["phones"] if p["id"] == comp["mobile_id"]), {}) if listed else {}
+    check("companion stays watch",
+          watch_row.get("kind") == "watch" and watch_row.get("confirmed") is True, str(watch_row))
+
     # second tenant: its token must not reach the first device
     req2 = call("POST", "/api/v1/pair/request",
-                {"device_name": "SMOKE-PC-2", "platform": "windows", "agent_version": "test"})
+                {"device_name": "SMOKE-PC-2", "platform": "windows", "agent_version": "test", "enc_required": False})
     rid2, code2, rtoken2 = req2["request_id"], req2["pair_code"], req2["request_token"]
     appr2 = call("POST", "/api/v1/pair/approve",
                  {"request_id": rid2, "pair_code": code2, "mobile_name": "Other Phone"})
@@ -244,6 +362,9 @@ def main():
     check("cross-device screenshot delete blocked", cross is not None)
     cross = call("GET", f"/api/v1/devices/{did}/screenshots/{sid}/file", token=mobile2, expect=403)
     check("cross-device screenshot file blocked", cross is not None)
+    cross = call("POST", f"/api/v1/devices/{did}/companions",
+                 {"name": "Sneaky Watch", "kind": "watch"}, mobile2, expect=403)
+    check("cross-device companions blocked", cross is not None)
 
     noauth = call("GET", "/api/v1/devices", expect=401)
     check("auth enforced", noauth is not None)

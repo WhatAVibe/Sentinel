@@ -35,6 +35,61 @@ public static class SelfTest
             return protectedValue != value && Secrets.Unprotect(protectedValue) == value;
         });
 
+        Add("enc-roundtrip", () =>
+        {
+            var config = new AppConfig();
+            foreach (var kind in new[] { "event", "message", "shot" })
+            {
+                var plain = RandomNumberGenerator.GetBytes(257);
+                var enc = DataKey.Encrypt(config, kind, plain);
+                if (!DataKey.Decrypt(config, kind, enc).SequenceEqual(plain)) return false;
+            }
+
+            var sample = DataKey.Encrypt(config, "event", Encoding.UTF8.GetBytes("tamper"));
+            var tampered = Convert.FromBase64String(sample);
+            tampered[^1] ^= 0x01;
+            var tamperDetected = false;
+            try
+            {
+                DataKey.Decrypt(config, "event", Convert.ToBase64String(tampered));
+            }
+            catch (CryptographicException)
+            {
+                tamperDetected = true;
+            }
+
+            var wrongAadDetected = false;
+            try
+            {
+                DataKey.Decrypt(config, "shot", sample);
+            }
+            catch (CryptographicException)
+            {
+                wrongAadDetected = true;
+            }
+
+            return tamperDetected && wrongAadDetected;
+        });
+
+        Add("data-key", () =>
+        {
+            var config = new AppConfig();
+            var first = DataKey.GetOrCreate(config);
+            var second = DataKey.GetOrCreate(config);
+            var ok = first.Length == 32 && first.SequenceEqual(second);
+            ok &= !string.IsNullOrEmpty(config.ProtectedDataKey);
+            ok &= config.ProtectedDataKey != Convert.ToBase64String(first);
+            ok &= Secrets.Unprotect(config.ProtectedDataKey) == Convert.ToBase64String(first);
+
+            var roundtrip = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(config));
+            ok &= roundtrip != null && DataKey.GetOrCreate(roundtrip).SequenceEqual(first);
+
+            DataKey.Clear(config);
+            ok &= string.IsNullOrEmpty(config.ProtectedDataKey);
+            ok &= !DataKey.GetOrCreate(config).SequenceEqual(first);
+            return ok;
+        });
+
         Add("totp-rfc6238", () =>
         {
             const string secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";

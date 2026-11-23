@@ -79,13 +79,16 @@ public partial class PairWindow : Window
         CountdownText.Text = "Code expires shortly";
         try
         {
+            var dataKey = DataKey.Base64(App.Host.Config);
+            App.Host.SaveConfig();
             var payload = JsonSerializer.Serialize(new
             {
-                v = 1,
+                v = 2,
                 u = _serverUrl,
                 r = _request.RequestId,
                 c = _request.PairCode,
-                n = Environment.MachineName
+                n = Environment.MachineName,
+                k = dataKey
             });
             using var generator = new QRCodeGenerator();
             using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);

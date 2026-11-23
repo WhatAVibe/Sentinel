@@ -277,6 +277,7 @@ public partial class SettingsView : UserControl
         {
             await App.Host.Api.RemovePhoneAsync(id, CancellationToken.None);
             await LoadPhonesAsync();
+            if (_phones.Count == 0) App.Host.ClearDataKey();
         }
         catch (ApiException ex) when (ex.Code == "primary_device")
         {

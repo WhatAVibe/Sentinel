@@ -233,6 +233,7 @@ class Shot {
   final int height;
   final String trigger;
   final String url;
+  final bool encrypted;
 
   const Shot({
     required this.id,
@@ -243,6 +244,7 @@ class Shot {
     this.height = 0,
     this.trigger = 'manual',
     this.url = '',
+    this.encrypted = false,
   });
 
   DateTime get time => DateTime.fromMillisecondsSinceEpoch(ts);
@@ -257,6 +259,7 @@ class Shot {
         height: asInt(json['height']),
         trigger: asString(json['trigger'], 'manual'),
         url: asString(json['url']),
+        encrypted: asBool(json['enc']),
       );
 }
 
@@ -291,6 +294,7 @@ class Session {
   final String mode;
   final String token;
   final String totpSecret;
+  final String dataKey;
   final String deviceId;
   final String deviceName;
   final String label;
@@ -307,11 +311,14 @@ class Session {
     required this.deviceName,
     required this.label,
     required this.pairedAt,
+    this.dataKey = '',
     this.uid = '',
     this.localName = '',
   });
 
   bool get isDirect => mode == 'direct';
+
+  bool get encrypted => dataKey.isNotEmpty;
 
   String get displayName => localName.isNotEmpty ? localName : deviceName;
 
@@ -320,6 +327,7 @@ class Session {
         'mode': mode,
         'token': token,
         'totp_secret': totpSecret,
+        'data_key': dataKey,
         'device_id': deviceId,
         'device_name': deviceName,
         'label': label,
@@ -333,6 +341,7 @@ class Session {
         mode: asString(json['mode'], 'relay'),
         token: asString(json['token']),
         totpSecret: asString(json['totp_secret']),
+        dataKey: asString(json['data_key']),
         deviceId: asString(json['device_id']),
         deviceName: asString(json['device_name'], 'Windows PC'),
         label: asString(json['label'], 'Sentinel'),
@@ -346,6 +355,7 @@ class Session {
         mode: mode,
         token: token,
         totpSecret: totpSecret,
+        dataKey: dataKey,
         deviceId: deviceId,
         deviceName: deviceName,
         label: label,
@@ -359,6 +369,7 @@ class Session {
         mode: mode,
         token: token,
         totpSecret: totpSecret,
+        dataKey: dataKey,
         deviceId: deviceId,
         deviceName: deviceName,
         label: label,
@@ -372,6 +383,7 @@ class Session {
         mode: mode,
         token: token,
         totpSecret: totpSecret,
+        dataKey: dataKey,
         deviceId: deviceId,
         deviceName: deviceName,
         label: label,
@@ -408,6 +420,20 @@ class PhoneInfo {
       );
 }
 
+class CompanionInfo {
+  final String id;
+  final String name;
+  final String token;
+
+  const CompanionInfo({required this.id, required this.name, required this.token});
+
+  factory CompanionInfo.fromJson(Map<String, dynamic> json) => CompanionInfo(
+        id: asString(json['mobile_id']),
+        name: asString(json['name'], 'Watch'),
+        token: asString(json['mobile_token']),
+      );
+}
+
 String newMobileUid() {
   final random = Random.secure();
   final bytes = List<int>.generate(12, (_) => random.nextInt(256));
@@ -420,7 +446,7 @@ const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
 /// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
 String sentinelDeviceName = '';
 
-const sentinelAppVersion = '1.6.1';
+const sentinelAppVersion = '2.0.0';
 
 Future<void> loadDeviceName() async {
   try {
@@ -463,6 +489,11 @@ class ApiError implements Exception {  final int status;
         return 'The PC could not replace its clipboard.';
       case 'rate_limited':
         return 'Slow down and try again.';
+      case 'encryption_key_required':
+        return "Scan the PC's QR code to receive the encryption key. "
+            'Typing the code only works for a plaintext device.';
+      case 'invalid_data_key':
+        return "That QR code does not contain a valid encryption key. Generate a new code on the PC.";
       default:
         return 'Request failed ($code).';
     }

@@ -105,7 +105,17 @@ private fun WatchApp() {
     var screen by remember { mutableStateOf(if (session == null) "pair" else "home") }
     val pending by TileActions.pending.collectAsState()
     val requestedScreen by TileActions.screen.collectAsState()
+    val paired by PairEvents.paired.collectAsState()
     val active = session
+
+    LaunchedEffect(paired) {
+        val next = paired ?: return@LaunchedEffect
+        TileActions.pending.value = null
+        TileActions.screen.value = null
+        session = next
+        screen = "home"
+        PairEvents.paired.value = null
+    }
 
     LaunchedEffect(requestedScreen, active) {
         if (requestedScreen != null && active != null) {
@@ -238,7 +248,13 @@ private fun PairScreen(store: Store, onPaired: (Session) -> Unit) {
             Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp, textAlign = TextAlign.Center)
         }
         Text(
-            "PC: Settings -> Pair another phone, then type its code here.",
+            "Add this watch from the phone's Linked devices: the phone sends the encryption key.",
+            fontSize = 9.sp,
+            color = Muted,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            "Manual pairing below still works for commands, but the encryption key never reaches the watch.",
             fontSize = 9.sp,
             color = Muted,
             textAlign = TextAlign.Center,
@@ -558,6 +574,16 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(session.deviceName, fontSize = 12.sp)
         Text(session.baseUrl, fontSize = 9.sp, color = Muted, textAlign = TextAlign.Center)
+        if (session.dataKey.isEmpty()) {
+            Text(
+                "No encryption key (manual pairing). Pair from the phone for encrypted sessions.",
+                fontSize = 9.sp,
+                color = Color(0xFFF2C46D),
+                textAlign = TextAlign.Center,
+            )
+        } else {
+            Text("Encryption key on this watch", fontSize = 9.sp, color = Color(0xFF6EE7A8))
+        }
         Button(onClick = onTiles, modifier = Modifier.fillMaxWidth()) { Text("Tile layout") }
         Text(
             "Complication: long-press the watch face, pick a slot, Sentinel.",
@@ -569,7 +595,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 1.3.5", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 2.0.0", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }

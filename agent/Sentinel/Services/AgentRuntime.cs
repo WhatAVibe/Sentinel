@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
 using Sentinel.Models;
 
 namespace Sentinel.Services;
@@ -91,6 +93,26 @@ public sealed class AgentRuntime : IDisposable
     {
         Stop();
         _flushSignal.Dispose();
+    }
+
+    // Events are encrypted only for the wire; the local dashboard keeps the
+    // plaintext copy in ActivityEventData/Title/Detail.
+    public ActivityEventData ProtectEvent(ActivityEventData evt)
+    {
+        if (!string.IsNullOrEmpty(evt.Enc)) return evt;
+        var hadKey = !string.IsNullOrEmpty(_cfg.ProtectedDataKey);
+        var payload = JsonSerializer.Serialize(new { title = evt.Title, detail = evt.Detail }, ApiClient.Json);
+        var enc = DataKey.Encrypt(_cfg, "event", Encoding.UTF8.GetBytes(payload));
+        if (!hadKey && !string.IsNullOrEmpty(_cfg.ProtectedDataKey)) _host.SaveConfig();
+        return new ActivityEventData
+        {
+            Ts = evt.Ts,
+            Category = evt.Category,
+            Severity = evt.Severity,
+            Title = evt.Title,
+            Detail = evt.Detail,
+            Enc = enc
+        };
     }
 
     private void SetStatus(string status)
@@ -234,7 +256,8 @@ public sealed class AgentRuntime : IDisposable
 
             try
             {
-                await _api.PostEventsAsync(batch, ct).ConfigureAwait(false);
+                var encrypted = batch.Select(ProtectEvent).ToList();
+                await _api.PostEventsAsync(encrypted, ct).ConfigureAwait(false);
                 lock (_pendingLock)
                 {
                     _pending.RemoveRange(0, Math.Min(batch.Count, _pending.Count));

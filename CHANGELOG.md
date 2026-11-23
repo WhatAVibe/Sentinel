@@ -3,6 +3,43 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [3.0.0] — 2026-11-23
+
+Installer 3.0.0 · Agent 2.0.0 · Relay 2.0.0 · Phone 2.0.0 (18) · Watch 2.0.0 (11) · Flipper 1.1.0
+
+**Breaking:** no legacy plaintext mode. Existing devices must be unlinked and paired again; old encryption-free
+rows do not decrypt.
+
+### Added
+
+- **End-to-end encryption on by default.** The agent generates a 32-byte data key per PC (DPAPI) and
+  encrypts event payloads, messages/replies and screenshots with AES-256-GCM (`sentinel:v2:event|message|shot`
+  AAD). The relay stores `enc` blobs, clears plaintext columns and stores encrypted screenshots as `.enc`
+  files. Phones decrypt events, messages and screenshot bytes in memory; nothing plaintext is written to
+  disc/cache.
+- **QR key delivery.** The pairing QR is v2 and carries `k` (the data key). The key never transits the relay.
+  Manual URL + 6-character pairing is refused for relay sessions because it cannot deliver a key safely.
+- **Phone-mediated watch pairing.** Settings → **Pair a Wear OS watch** calls the new relay companion endpoint
+  (`POST /devices/<id>/companions`), then sends URL, token, TOTP secret and data key over the Wear OS Data
+  Layer (`/sentinel/pair`). The watch saves the session and key and switches to its home screen; no typing on
+  the watch. Manual watch pairing still works for commands but has no key.
+- **Encrypted-mode enforcement:** `enc_required` on devices; the relay rejects mixed/plaintext writes with
+  `400 enc_required`, including agent events, replies, phone messages and screenshots.
+- **Encryption status** in phone Settings and on the watch; key state is never displayed or logged.
+
+### Changed
+
+- The relay interface now includes `enc` fields and `enc_required`; `docs/API.md` and `docs/ENCRYPTION.md`
+  document the contract.
+- Messages sent from the phone are encrypted before leaving the device; the agent decrypts them for display.
+- Existing screenshot quotas apply to ciphertext (500 images / 1 GB, 5 manual captures per 30 min, event
+  cap), so encrypted storage cannot be flooded.
+
+### Upgrade
+
+Unpair the PC, phone and watch (or purge the relay), install 3.0.0 everywhere, then pair by scanning the PC's
+QR and add the watch from the phone. 3.0.0 intentionally has no plaintext fallback.
+
 ## [2.1.3] — 2026-11-22
 
 Installer 2.1.3 · Agent 1.6.3 · Relay 1.3.4 · Phone 1.6.1 (17) · Watch 1.3.5 (10) · Flipper 1.1.0

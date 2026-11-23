@@ -76,16 +76,7 @@ class SettingsPage extends StatelessWidget {
     );
     if (url == null || url.isEmpty || !context.mounted) return;
     final base = normalizeBaseUrl(url);
-    final updated = Session(
-      baseUrl: base,
-      mode: session.mode,
-      token: session.token,
-      totpSecret: session.totpSecret,
-      deviceId: session.deviceId,
-      deviceName: session.deviceName,
-      label: session.label,
-      pairedAt: session.pairedAt,
-    );
+    final updated = session.withBaseUrl(base);
     await state.attach(updated);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Server set to $base')));
@@ -244,6 +235,50 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const SectionHeader('Encryption'),
+          CardBox(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      session?.encrypted == true ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      size: 18,
+                      color: session?.encrypted == true ? C.success : C.warning,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            session?.encrypted == true
+                                ? 'End-to-end encryption is on'
+                                : (session?.isDirect == true
+                                    ? 'Plaintext over the direct link'
+                                    : 'No encryption key on this session'),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            session?.encrypted == true
+                                ? 'Events, messages and screenshots are decrypted on this phone. The relay only stores ciphertext.'
+                                : (session?.isDirect == true
+                                    ? 'Direct ADB mode never goes through the relay. Pair over the relay to enable encryption.'
+                                    : "Scan the PC's QR code again to receive the data key."),
+                            style: const TextStyle(fontSize: 10.5, color: C.muted, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(color: C.border, height: 1),
+                const _WatchPairTile(),
               ],
             ),
           ),
@@ -476,7 +511,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 1.6.1'),
+                const _Line('App', 'Sentinel 2.0.0'),
                 _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'
@@ -612,6 +647,52 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WatchPairTile extends StatefulWidget {
+  const _WatchPairTile();
+
+  @override
+  State<_WatchPairTile> createState() => _WatchPairTileState();
+}
+
+class _WatchPairTileState extends State<_WatchPairTile> {
+  bool _busy = false;
+
+  Future<void> _pair() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final result = await context.read<AppState>().pairWatch();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final direct = state.session?.isDirect ?? false;
+    final encrypted = state.session?.encrypted ?? false;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      enabled: !_busy,
+      leading: const Icon(Icons.watch_rounded, size: 18),
+      title: const Text('Pair a Wear OS watch',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      subtitle: Text(
+        direct
+            ? 'Watches pair through the relay. Switch to a relay session first.'
+            : (encrypted
+                ? 'Adds the watch over Bluetooth and sends it the key. The relay never sees it.'
+                : "Requires the encryption key from the PC's QR code."),
+        style: const TextStyle(fontSize: 11, color: C.muted, height: 1.4),
+      ),
+      trailing: _busy
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.chevron_right_rounded, size: 18, color: C.muted),
+      onTap: direct || _busy ? null : _pair,
     );
   }
 }

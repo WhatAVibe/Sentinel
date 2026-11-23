@@ -144,7 +144,10 @@ def mobile_required(fn):
             db().execute("UPDATE mobiles SET app_version = ? WHERE id = ?", (app_version, mobile["id"]))
             mobile["app_version"] = app_version
         ua = request.headers.get("User-Agent") or ""
-        kind = "watch" if "SentinelWatch" in ua else "phone"
+        if "SentinelWatch" in ua:
+            kind = "watch"
+        else:
+            kind = mobile.get("kind") or "phone"
         if kind != (mobile.get("kind") or "phone"):
             db().execute("UPDATE mobiles SET kind = ? WHERE id = ?", (kind, mobile["id"]))
             mobile["kind"] = kind
@@ -164,6 +167,17 @@ def parse_json(value, default):
         return default
 
 
+def enc_field(value) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
+def flag(value) -> bool:
+    return str(value or "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def serialize_device(row: dict, include_secret: bool = False) -> dict:
     settings = parse_json(row.get("settings"), {})
     state = parse_json(row.get("state"), {})
@@ -178,6 +192,7 @@ def serialize_device(row: dict, include_secret: bool = False) -> dict:
         "last_seen": row.get("last_seen") or 0,
         "away": bool(row.get("away")),
         "locked": bool(row.get("locked")),
+        "enc_required": bool(row.get("enc_required")),
         "settings": settings,
         "state": state,
         "metrics": metrics,
@@ -214,6 +229,7 @@ def serialize_event(row: dict) -> dict:
         "severity": row["severity"],
         "title": row["title"],
         "detail": parse_json(row.get("detail"), None),
+        "enc": row.get("enc"),
     }
 
 
@@ -227,6 +243,7 @@ def serialize_shot(row: dict) -> dict:
         "height": row.get("height"),
         "trigger": row.get("trigger"),
         "size": row.get("size"),
+        "enc": bool(row.get("enc")),
         "url": f"/api/v1/devices/{row['device_id']}/screenshots/{row['id']}/file",
     }
 
@@ -245,7 +262,8 @@ def serialize_phone(row: dict, current: bool = False) -> dict:
     }
 
 
-def serialize_message(row: dict) -> dict:    return {
+def serialize_message(row: dict) -> dict:
+    return {
         "id": row["id"],
         "device_id": row["device_id"],
         "direction": row["direction"],
@@ -257,6 +275,7 @@ def serialize_message(row: dict) -> dict:    return {
         "status": row["status"],
         "created_at": row["created_at"],
         "updated_at": row.get("updated_at"),
+        "enc": row.get("enc"),
     }
 
 
@@ -327,6 +346,7 @@ def pair_request():
 
     body = _json_body()
     agent = _device_from_token(_bearer())
+    enc_required = 1 if body.get("enc_required") else 0
     code = new_pair_code()
     rid = uuid.uuid4().hex
     token = new_token()
@@ -339,6 +359,10 @@ def pair_request():
         platform = agent.get("platform")
         fingerprint = agent.get("fingerprint")
         tmp_secret = None
+        if "enc_required" in body:
+            db().execute(
+                "UPDATE devices SET enc_required = ? WHERE id = ?", (enc_required, device_id)
+            )
     else:
         device_id = uuid.uuid4().hex
         name = (body.get("device_name") or "Windows PC").strip()[:64]
@@ -348,7 +372,7 @@ def pair_request():
         tmp_secret = token
         db().execute(
             "INSERT INTO devices (id, name, platform, fingerprint, agent_version, token_hash, "
-            "totp_secret, created_at, settings, state, metrics) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            "totp_secret, created_at, settings, state, metrics, enc_required) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 device_id,
                 name,
@@ -361,6 +385,7 @@ def pair_request():
                 json.dumps({}),
                 json.dumps({}),
                 json.dumps({}),
+                enc_required,
             ),
         )
 
@@ -428,6 +453,7 @@ def pair_lookup():
     return jsonify(
         request_id=row["id"],
         device_name=(device["name"] if device else row["device_name"]) or "Windows PC",
+        enc_required=bool(device.get("enc_required")) if device else False,
         expires_at=row["expires_at"],
         server={"name": cfg().data["server_name"], "url": cfg().public_base()},
     )
@@ -499,6 +525,7 @@ def pair_approve():
 
     return jsonify(
         device=serialize_device(device, include_secret=True),
+        enc_required=bool(device.get("enc_required")),
         mobile_token=mobile_token,
         mobile_id=mid,
         confirmed=False,
@@ -704,9 +731,16 @@ def agent_events_history():
 def agent_events():
     body = _json_body()
     events = body.get("events") or []
+    if not isinstance(events, list):
+        return jsonify(error="bad_events"), 400
+    required = bool(g.device.get("enc_required"))
+    if required and any(not enc_field(ev.get("enc")) for ev in events if isinstance(ev, dict)):
+        return jsonify(error="enc_required"), 400
     limit = int(cfg().data.get("events_per_minute", 600))
     accepted = []
     for ev in events[:500]:
+        if not isinstance(ev, dict):
+            continue
         if not limiter.allow(f"events:{g.device_id}", limit, 60):
             break
         accepted.append(ev)
@@ -715,18 +749,21 @@ def agent_events():
     events = accepted
     out = []
     for ev in events[:500]:
+        enc = enc_field(ev.get("enc"))
         title = str(ev.get("title") or "")[:400]
-        if not title:
+        if not enc and not title:
             continue
+        detail = None if enc else json.dumps(ev.get("detail")) if ev.get("detail") is not None else None
         tid = db().execute_returning_id(
-            "INSERT INTO events (device_id, ts, category, severity, title, detail) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO events (device_id, ts, category, severity, title, detail, enc) VALUES (?,?,?,?,?,?,?)",
             (
                 g.device_id,
                 int(ev.get("ts") or now_ms()),
                 str(ev.get("category") or "system")[:32],
                 str(ev.get("severity") or "info")[:16],
-                title,
-                json.dumps(ev.get("detail")) if ev.get("detail") is not None else None,
+                "" if enc else title,
+                detail,
+                enc,
             ),
         )
         out.append({"id": tid, "ts": ev.get("ts"), "category": ev.get("category")})
@@ -741,7 +778,8 @@ def agent_events():
         )
         important = [
             e for e in events
-            if str(e.get("severity")) in ("warning",) or str(e.get("category")) in ("security", "message")
+            if not enc_field(e.get("enc"))
+            and (str(e.get("severity")) in ("warning",) or str(e.get("category")) in ("security", "message"))
         ]
         if important:
             titles = "; ".join(str(e.get("title") or "")[:90] for e in important[:3])
@@ -756,6 +794,9 @@ def agent_screenshots():
     if not f:
         return jsonify(error="file_required"), 400
     trigger = (request.form.get("trigger") or "manual")[:32]
+    encrypted = flag(request.form.get("enc"))
+    if g.device.get("enc_required") and not encrypted:
+        return jsonify(error="enc_required"), 400
     if not limiter.allow(
         f"shots:{g.device_id}", int(cfg().data.get("screenshot_uploads_per_minute", 30)), 60
     ):
@@ -776,7 +817,7 @@ def agent_screenshots():
     sid = uuid.uuid4().hex
     folder = Path(cfg().shots_dir) / g.device_id
     folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{sid}.png"
+    path = folder / f"{sid}{'.enc' if encrypted else '.png'}"
     path.write_bytes(raw)
 
     row = {
@@ -790,11 +831,12 @@ def agent_screenshots():
         "trigger": (request.form.get("trigger") or "manual")[:32],
         "path": str(path),
         "size": len(raw),
+        "enc": "1" if encrypted else None,
     }
     db().execute(
-        "INSERT INTO screenshots (id, device_id, ts, monitor, monitor_name, width, height, trigger, path, size) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (sid, row["device_id"], row["ts"], row["monitor"], row["monitor_name"], row["width"], row["height"], row["trigger"], row["path"], row["size"]),
+        "INSERT INTO screenshots (id, device_id, ts, monitor, monitor_name, width, height, trigger, path, size, enc) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (sid, row["device_id"], row["ts"], row["monitor"], row["monitor_name"], row["width"], row["height"], row["trigger"], row["path"], row["size"], row["enc"]),
     )
     trim_screenshots(g.device_id)
     hub().push_to_device_clients(
@@ -1327,15 +1369,49 @@ def remove_phone(did, mid):
     return jsonify(ok=True)
 
 
+@bp.post("/devices/<did>/companions")
+@mobile_required
+def create_companion(did):
+    if did != g.device_id:
+        return jsonify(error="forbidden"), 403
+    body = _json_body()
+    kind = str(body.get("kind") or "").strip().lower()
+    if kind != "watch":
+        return jsonify(error="unsupported_kind"), 400
+    if not limiter.allow(f"companion:{g.mobile['id']}", 5, 3600):
+        return jsonify(error="rate_limited", retry_after=3600), 429
+    name = str(body.get("name") or "").strip()[:64] or "Watch"
+    token = new_token()
+    mid = uuid.uuid4().hex
+    now = now_ms()
+    db().execute(
+        "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, last_seen, uid, "
+        "confirmed, app_version, kind) VALUES (?,?,?,?,?,?,NULL,1,'',?)",
+        (mid, name, did, hash_token(token), now, now, kind),
+    )
+    db().audit(g.actor, "companion.created", {"device": did, "mobile": mid, "kind": kind, "name": name})
+    hub().push_to_device_clients(did, {"type": "phones"})
+    device = db().one("SELECT * FROM devices WHERE id = ?", (did,)) or g.device
+    return jsonify(
+        mobile_token=token,
+        mobile_id=mid,
+        device_id=did,
+        enc_required=bool(device.get("enc_required")),
+    )
+
+
 @bp.post("/devices/<did>/message")
 @mobile_required
 def send_message(did):
     if did != g.device_id:
         return jsonify(error="forbidden"), 403
     body = _json_body()
+    enc = enc_field(body.get("enc"))
     text = str(body.get("body") or body.get("text") or "").strip()
-    if not text:
+    if not enc and not text:
         return jsonify(error="body_required"), 400
+    if not enc and g.device.get("enc_required"):
+        return jsonify(error="enc_required"), 400
     kind = str(body.get("kind") or "toast").strip()[:16]
     if kind not in ("toast", "dialog", "alert", "banner", "fullscreen"):
         kind = "toast"
@@ -1344,23 +1420,32 @@ def send_message(did):
     mid = uuid.uuid4().hex
     now = now_ms()
     db().execute(
-        "INSERT INTO messages (id, device_id, direction, kind, title, body, reply, allow_reply, status, created_at, updated_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        (mid, did, "to_pc", kind, title, text[:2000], None, 1 if allow_reply else 0, "sent", now, now),
+        "INSERT INTO messages (id, device_id, direction, kind, title, body, reply, allow_reply, status, created_at, updated_at, enc) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            mid, did, "to_pc", kind,
+            None if enc else title,
+            None if enc else text[:2000],
+            None, 1 if allow_reply else 0, "sent", now, now, enc,
+        ),
     )
+    args = {
+        "message_id": mid,
+        "kind": kind,
+        "allow_reply": allow_reply,
+    }
+    if enc:
+        args["enc"] = enc
+    else:
+        args["title"] = title
+        args["text"] = text[:2000]
     command = issue_command(
         did,
         "message",
-        {
-            "message_id": mid,
-            "title": title,
-            "text": text[:2000],
-            "kind": kind,
-            "allow_reply": allow_reply,
-        },
+        args,
         source=f"mobile:{g.mobile['id'][:8]}",
     )
-    push(cfg(), "Sentinel message", text[:400])
+    push(cfg(), "Sentinel message", "Encrypted message" if enc else text[:400])
     row = db().one("SELECT * FROM messages WHERE id = ?", (mid,))
     return jsonify(ok=True, message=serialize_message(row), command=command)
 
@@ -1384,12 +1469,17 @@ def message_reply(mid):
     if not row:
         return jsonify(error="not_found"), 404
     body = _json_body()
+    enc = enc_field(body.get("enc"))
     reply = str(body.get("reply") or "").strip()[:2000]
-    status = str(body.get("status") or ("replied" if reply else "dismissed"))[:16]
+    if not enc and reply and g.device.get("enc_required"):
+        return jsonify(error="enc_required"), 400
+    if enc:
+        reply = ""
+    status = str(body.get("status") or ("replied" if (reply or enc) else "dismissed"))[:16]
     now = now_ms()
     db().execute(
-        "UPDATE messages SET reply = ?, status = ?, updated_at = ? WHERE id = ?",
-        (reply or None, status, now, mid),
+        "UPDATE messages SET reply = ?, status = ?, updated_at = ?, enc = ? WHERE id = ?",
+        (reply or None, status, now, enc, mid),
     )
     updated = db().one("SELECT * FROM messages WHERE id = ?", (mid,))
     hub().push_to_device_clients(
@@ -1444,7 +1534,11 @@ def shot_file(did, sid):
     row = db().one("SELECT * FROM screenshots WHERE id=? AND device_id=?", (sid, did))
     if not row or not Path(row["path"]).exists():
         return jsonify(error="not_found"), 404
-    response = send_file(row["path"], mimetype="image/png", max_age=0)
+    response = send_file(
+        row["path"],
+        mimetype="application/octet-stream" if row.get("enc") else "image/png",
+        max_age=0,
+    )
     response.headers["Cache-Control"] = "private, no-store"
     return response
 

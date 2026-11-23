@@ -65,7 +65,8 @@ public sealed class AgentHost : IDisposable
         {
             BaseUrl = Config.ServerUrl,
             Token = Config.AgentToken,
-            AllowInsecureTls = Config.AllowInsecureTls
+            AllowInsecureTls = Config.AllowInsecureTls,
+            Config = Config
         };
         Monitor = new MonitorService(Config);
         Runtime = new AgentRuntime(this, Api, Config);
@@ -232,6 +233,7 @@ public sealed class AgentHost : IDisposable
     {
         Config.ProtectedAgentToken = "";
         Config.ProtectedTotpSecret = "";
+        DataKey.Clear(Config);
         SaveConfig();
         Runtime.Stop();
         UiState.I.Paired = false;
@@ -344,7 +346,7 @@ public sealed class AgentHost : IDisposable
             try
             {
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                await Api.PostEventsAsync(new[] { evt }, timeout.Token);
+                await Api.PostEventsAsync(new[] { Runtime.ProtectEvent(evt) }, timeout.Token);
             }
             catch (Exception ex)
             {
@@ -585,8 +587,17 @@ public sealed class AgentHost : IDisposable
                 case "message":
                 {
                     var text = Arg("text");
-                    if (string.IsNullOrWhiteSpace(text)) text = "Message from your phone";
                     var title = Arg("title");
+                    var encrypted = Arg("enc");
+                    if (!string.IsNullOrWhiteSpace(encrypted))
+                    {
+                        using var document = JsonDocument.Parse(DataKey.Decrypt(Config, "message", encrypted));
+                        if (document.RootElement.TryGetProperty("title", out var t))
+                            title = t.GetString() ?? title;
+                        if (document.RootElement.TryGetProperty("body", out var b))
+                            text = b.GetString() ?? text;
+                    }
+                    if (string.IsNullOrWhiteSpace(text)) text = "Message from your phone";
                     if (string.IsNullOrWhiteSpace(title)) title = "Message from your phone";
                     var kind = Arg("kind");
                     if (string.IsNullOrWhiteSpace(kind)) kind = "toast";
@@ -711,8 +722,20 @@ public sealed class AgentHost : IDisposable
 
     public void SetLinkedDevices(int count)
     {
+        var previous = LinkedDevices;
         LinkedDevices = count;
         UiState.Post(() => UiState.I.LinkedDevices = count);
+        // The DEK is only useful while a device holds it. Once the last linked
+        // device goes away the next pairing starts a fresh key.
+        if (previous > 0 && count == 0) ClearDataKey();
+    }
+
+    public void ClearDataKey()
+    {
+        if (string.IsNullOrEmpty(Config.ProtectedDataKey)) return;
+        DataKey.Clear(Config);
+        SaveConfig();
+        Log.Write("info", "data key cleared", new { });
     }
 
     private static bool SetClipboard(string text)

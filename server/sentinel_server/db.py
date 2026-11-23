@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS devices (
     metrics TEXT NOT NULL DEFAULT '{}',
     offline_alerted INTEGER NOT NULL DEFAULT 0,
     disk_alerted INTEGER NOT NULL DEFAULT 0,
-    battery_alerted INTEGER NOT NULL DEFAULT 0
+    battery_alerted INTEGER NOT NULL DEFAULT 0,
+    enc_required INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS mobiles (
@@ -77,7 +78,8 @@ CREATE TABLE IF NOT EXISTS events (
     category TEXT NOT NULL,
     severity TEXT NOT NULL DEFAULT 'info',
     title TEXT NOT NULL,
-    detail TEXT
+    detail TEXT,
+    enc TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_device ON events(device_id, id);
@@ -93,7 +95,8 @@ CREATE TABLE IF NOT EXISTS screenshots (
     height INTEGER,
     trigger TEXT,
     path TEXT NOT NULL,
-    size INTEGER
+    size INTEGER,
+    enc TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_shots_device ON screenshots(device_id, ts);
@@ -117,7 +120,8 @@ CREATE TABLE IF NOT EXISTS messages (
     allow_reply INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'sent',
     created_at INTEGER NOT NULL,
-    updated_at INTEGER
+    updated_at INTEGER,
+    enc TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_device ON messages(device_id, created_at);
@@ -227,6 +231,17 @@ class Database:
                     conn.execute("ALTER TABLE devices ADD COLUMN disk_alerted INTEGER NOT NULL DEFAULT 0")
                 if "battery_alerted" not in device_columns:
                     conn.execute("ALTER TABLE devices ADD COLUMN battery_alerted INTEGER NOT NULL DEFAULT 0")
+                if "enc_required" not in device_columns:
+                    conn.execute("ALTER TABLE devices ADD COLUMN enc_required INTEGER NOT NULL DEFAULT 0")
+                event_columns = [row[1] for row in conn.execute("PRAGMA table_info(events)")]
+                if "enc" not in event_columns:
+                    conn.execute("ALTER TABLE events ADD COLUMN enc TEXT")
+                shot_columns = [row[1] for row in conn.execute("PRAGMA table_info(screenshots)")]
+                if "enc" not in shot_columns:
+                    conn.execute("ALTER TABLE screenshots ADD COLUMN enc TEXT")
+                message_columns = [row[1] for row in conn.execute("PRAGMA table_info(messages)")]
+                if "enc" not in message_columns:
+                    conn.execute("ALTER TABLE messages ADD COLUMN enc TEXT")
                 if "is_primary" not in columns:
                     conn.execute("ALTER TABLE mobiles ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0")
                 if "app_version" not in columns:

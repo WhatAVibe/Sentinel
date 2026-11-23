@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models.dart';
+import 'crypto_box.dart';
 import 'diagnostics.dart';
 
 String normalizeBaseUrl(String raw) {
@@ -17,6 +19,86 @@ String normalizeBaseUrl(String raw) {
     value = value.substring(0, value.length - 1);
   }
   return value;
+}
+
+CryptoBox? _cryptoFor(Session session) {
+  if (session.dataKey.isEmpty) return null;
+  try {
+    return CryptoBox.fromBase64(session.dataKey);
+  } catch (_) {
+    return null;
+  }
+}
+
+class _PayloadCodec {
+  final Session session;
+  final CryptoBox? _box;
+
+  _PayloadCodec(this.session) : _box = _cryptoFor(session);
+
+  Future<ActivityEvent> event(Map<String, dynamic> row) async {
+    final sealed = asString(row['enc']).trim();
+    if (sealed.isEmpty) return ActivityEvent.fromJson(row);
+    final box = _box;
+    if (box == null) return _lockedEvent(row);
+    try {
+      final data = asMap(jsonDecode(await box.decrypt(CryptoBox.event, sealed)));
+      return ActivityEvent.fromJson({
+        ...row,
+        'title': data.containsKey('title') ? asString(data['title']) : asString(row['title']),
+        'detail': data.containsKey('detail') ? data['detail'] : row['detail'],
+      });
+    } catch (_) {
+      return _lockedEvent(row);
+    }
+  }
+
+  Future<Map<String, dynamic>> message(Map<String, dynamic> row) async {
+    final sealed = asString(row['enc']).trim();
+    if (sealed.isEmpty) return row;
+    final box = _box;
+    if (box == null) return _lockedMessage();
+    try {
+      final data = asMap(jsonDecode(await box.decrypt(CryptoBox.message, sealed)));
+      return {
+        ...row,
+        'title': data.containsKey('title') ? asString(data['title']) : asString(row['title']),
+        'body': data.containsKey('body') ? asString(data['body']) : asString(row['body']),
+        'reply': data.containsKey('reply') ? asString(data['reply']) : asString(row['reply']),
+        'enc_failed': false,
+      }..remove('enc');
+    } catch (_) {
+      return _lockedMessage();
+    }
+  }
+
+  ActivityEvent _lockedEvent(Map<String, dynamic> row) => ActivityEvent.fromJson({
+        ...row,
+        'title': 'Encrypted event',
+        'detail': {'note': 'Scan the PC QR code again to unlock this item.'},
+      });
+
+  Map<String, dynamic> _lockedMessage() => const {
+        'title': 'Encrypted message',
+        'body': '',
+        'reply': '',
+        'enc_failed': true,
+        'status': 'unknown',
+      };
+}
+
+Future<Uint8List> _decodeShotBytes(Session session, Shot shot, Uint8List raw) async {
+  if (!shot.encrypted) return raw;
+  final box = _cryptoFor(session);
+  if (box == null) throw const CryptoException('missing_key');
+  String text;
+  try {
+    text = utf8.decode(raw).trim();
+  } catch (_) {
+    throw const CryptoException('bad_envelope');
+  }
+  if (text.isEmpty) throw const CryptoException('bad_envelope');
+  return box.decryptBytes(CryptoBox.shot, text);
 }
 
 class _Http {
@@ -73,7 +155,7 @@ class _Http {
         return response;
       });
 
-  Future<List<int>> getBytes(String path) async {
+  Future<Uint8List> getBytes(String path) async {
     final watch = Stopwatch()..start();
     try {
       final response = await client.get(uri(path), headers: headers).timeout(const Duration(seconds: 45));
@@ -124,6 +206,7 @@ abstract class SentinelClient {
   Future<bool> fetchConfirmed();
   Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200});
   Future<List<Shot>> fetchScreenshots({int beforeTs = 0, int limit = 120});
+  Future<Uint8List> fetchShotBytes(Shot shot);
   Future<CommandResult> sendCommand(String type, {Map<String, dynamic>? args, String? code});
   Future<CommandResult> sendMessage({
     required String body,
@@ -135,6 +218,7 @@ abstract class SentinelClient {
   Future<bool> verifyCode(String code);
   Future<List<PhoneInfo>> fetchPhones();
   Future<void> removePhone(String id);
+  Future<CompanionInfo> addCompanion({required String name, String kind = 'watch'});
   Future<void> updateSettings({bool? require2fa, bool? protectPower});
   Future<void> renameDevice(String name);
   Future<String> fetchRelayVersion();
@@ -149,6 +233,7 @@ class RelayClient implements SentinelClient {
   final http.Client _http = http.Client();
   late final _Http _api = _Http(session.baseUrl, session.token, _http);
   final StreamController<PushEvent> _controller = StreamController<PushEvent>.broadcast();
+  late final _PayloadCodec _codec = _PayloadCodec(session);
   WebSocketChannel? _channel;
   Timer? _retry;
   int _attempt = 0;
@@ -184,7 +269,7 @@ class RelayClient implements SentinelClient {
         _reconnect();
       });
       channel.stream.listen(
-        (raw) {
+        (raw) async {
           try {
             final decoded = jsonDecode(raw as String);
             if (decoded is! Map<String, dynamic>) return;
@@ -194,12 +279,9 @@ class RelayClient implements SentinelClient {
                 _controller.add(PushEvent('state', Device.fromJson(asMap(decoded['device']))));
                 break;
               case 'events':
-                _controller.add(PushEvent(
-                  'events',
-                  (decoded['events'] as List? ?? const [])
-                      .map((e) => ActivityEvent.fromJson(asMap(e)))
-                      .toList(),
-                ));
+                final rows = (decoded['events'] as List? ?? const []).map((e) => asMap(e));
+                final events = await Future.wait(rows.map(_codec.event));
+                _controller.add(PushEvent('events', events));
                 break;
               case 'screenshots':
                 _controller.add(PushEvent(
@@ -213,7 +295,8 @@ class RelayClient implements SentinelClient {
                 _controller.add(PushEvent('command', asMap(decoded['command'])));
                 break;
               case 'message':
-                _controller.add(PushEvent('message', asMap(decoded['message'])));
+                final message = await _codec.message(asMap(decoded['message']));
+                _controller.add(PushEvent('message', message));
                 break;
               case 'paired':
                 _controller.add(const PushEvent('paired'));
@@ -259,9 +342,8 @@ class RelayClient implements SentinelClient {
   Future<List<ActivityEvent>> fetchEvents({int since = 0, int before = 0, int limit = 200}) async {
     final older = before > 0 ? '&before=$before' : '';
     final body = await _api.get('/api/v1/devices/$_deviceId/events?since=$since&limit=$limit$older');
-    return (body['events'] as List? ?? const [])
-        .map((e) => ActivityEvent.fromJson(asMap(e)))
-        .toList();
+    final rows = (body['events'] as List? ?? const []).map((e) => asMap(e));
+    return Future.wait(rows.map(_codec.event));
   }
 
   @override
@@ -269,6 +351,13 @@ class RelayClient implements SentinelClient {
     final older = beforeTs > 0 ? '&before=$beforeTs' : '';
     final body = await _api.get('/api/v1/devices/$_deviceId/screenshots?limit=$limit$older');
     return (body['screenshots'] as List? ?? const []).map((e) => Shot.fromJson(asMap(e))).toList();
+  }
+
+  @override
+  Future<Uint8List> fetchShotBytes(Shot shot) async {
+    final path = shot.url.startsWith('http') ? Uri.parse(shot.url).path : shot.url;
+    final raw = await _api.getBytes(path);
+    return _decodeShotBytes(session, shot, raw);
   }
 
   @override
@@ -294,12 +383,18 @@ class RelayClient implements SentinelClient {
     String kind = 'toast',
     bool allowReply = false,
   }) async {
-    final response = await _api.post('/api/v1/devices/$_deviceId/message', {
-      'body': body,
-      'title': title,
-      'kind': kind,
-      'allow_reply': allowReply,
-    });
+    final box = _cryptoFor(session);
+    final Map<String, dynamic> payload;
+    if (box != null) {
+      final sealed = await box.encrypt(
+        CryptoBox.message,
+        utf8.encode(jsonEncode({'title': title, 'body': body})),
+      );
+      payload = {'enc': sealed, 'kind': kind, 'allow_reply': allowReply};
+    } else {
+      payload = {'body': body, 'title': title, 'kind': kind, 'allow_reply': allowReply};
+    }
+    final response = await _api.post('/api/v1/devices/$_deviceId/message', payload);
     return CommandResult.fromJson(asMap(response['command']));
   }
 
@@ -320,6 +415,15 @@ class RelayClient implements SentinelClient {
   @override
   Future<void> removePhone(String id) async {
     await _api.delete('/api/v1/devices/$_deviceId/phones/$id');
+  }
+
+  @override
+  Future<CompanionInfo> addCompanion({required String name, String kind = 'watch'}) async {
+    final body = await _api.post('/api/v1/devices/$_deviceId/companions', {
+      'name': name,
+      'kind': kind,
+    });
+    return CompanionInfo.fromJson(body);
   }
 
   @override
@@ -428,6 +532,13 @@ class DirectClient implements SentinelClient {
   }
 
   @override
+  Future<Uint8List> fetchShotBytes(Shot shot) async {
+    final path = shot.url.startsWith('http') ? Uri.parse(shot.url).path : shot.url;
+    final raw = await _api.getBytes(path);
+    return _decodeShotBytes(session, shot, raw);
+  }
+
+  @override
   Future<CommandResult> sendCommand(String type, {Map<String, dynamic>? args, String? code}) async {
     final body = await _api.post('/local/command', {
       'type': type,
@@ -468,6 +579,10 @@ class DirectClient implements SentinelClient {
 
   @override
   Future<void> removePhone(String id) async =>
+      throw const ApiError(400, 'unsupported_direct_mode');
+
+  @override
+  Future<CompanionInfo> addCompanion({required String name, String kind = 'watch'}) async =>
       throw const ApiError(400, 'unsupported_direct_mode');
 
   @override
@@ -513,6 +628,7 @@ class Pairer {
   static Future<Session> pairRelay({
     required String baseUrl,
     required String pairCode,
+    String dataKey = '',
     String? requestId,
     String mobileName = '',
     String mobileUid = '',
@@ -520,6 +636,9 @@ class Pairer {
     final name = mobileName.trim().isEmpty ? sentinelDeviceName : mobileName.trim();
     final base = normalizeBaseUrl(baseUrl);
     if (base.isEmpty) throw const ApiError(400, 'bad_url');
+    final key = dataKey.trim();
+    if (key.isEmpty) throw const ApiError(400, 'encryption_key_required');
+    if (!CryptoBox.isValidKey(key)) throw const ApiError(400, 'invalid_data_key');
     final uid = mobileUid.isEmpty ? newMobileUid() : mobileUid;
     final client = http.Client();
     try {
@@ -538,12 +657,16 @@ class Pairer {
         'mobile_name': name,
         'mobile_uid': uid,
       });
+      if (asBool(body['enc_required']) && key.isEmpty) {
+        throw const ApiError(409, 'encryption_key_required');
+      }
       final device = Device.fromJson(asMap(body['device']));
       return Session(
         baseUrl: base,
         mode: 'relay',
         token: asString(body['mobile_token']),
         totpSecret: asString(body['totp_secret'], device.totpSecret ?? ''),
+        dataKey: key,
         deviceId: device.id,
         deviceName: device.name,
         label: label.isEmpty ? device.name : label,

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api.dart';
 import '../core/app_state.dart';
+import '../core/crypto_box.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -59,7 +60,12 @@ class _PairScreenState extends State<PairScreen> {
     );
   }
 
-  Future<void> _pairRelay({String? baseUrl, String? code, String? requestId}) async {
+  Future<void> _pairRelay({
+    String? baseUrl,
+    String? code,
+    String? requestId,
+    String? dataKey,
+  }) async {
     final server = baseUrl ?? _server.text;
     final pairCode = (code ?? _code.text).replaceAll(' ', '').toUpperCase();
     if (server.trim().isEmpty) {
@@ -78,6 +84,7 @@ class _PairScreenState extends State<PairScreen> {
       final session = await Pairer.pairRelay(
         baseUrl: server,
         pairCode: pairCode,
+        dataKey: dataKey ?? '',
         requestId: requestId,
       );
       await _finish(session);
@@ -166,9 +173,18 @@ class _PairScreenState extends State<PairScreen> {
       final url = asString(decoded['u']);
       final code = asString(decoded['c']);
       final requestId = asString(decoded['r']);
+      final dataKey = asString(decoded['k']).trim();
       if (url.isEmpty || code.isEmpty) throw const FormatException();
+      if (!CryptoBox.isValidKey(dataKey)) {
+        setState(() {
+          _error = 'This QR code is missing the encryption key. Generate a new pairing code on the PC.';
+          _scanPayload = '';
+        });
+        return;
+      }
       _scanLocked = true;
-      _pairRelay(baseUrl: url, code: code, requestId: requestId).whenComplete(() {
+      _pairRelay(baseUrl: url, code: code, requestId: requestId, dataKey: dataKey)
+          .whenComplete(() {
         if (mounted) {
           _scanLocked = false;
           _scanPayload = '';
@@ -319,6 +335,11 @@ class _PairScreenState extends State<PairScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text('Server + code', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            const Text(
+              'Encrypted PCs must pair by QR code — the six-character code cannot carry the key.',
+              style: TextStyle(fontSize: 11, color: C.muted, height: 1.4),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _server,

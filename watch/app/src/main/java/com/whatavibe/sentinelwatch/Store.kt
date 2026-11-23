@@ -9,6 +9,8 @@ data class Session(
     val secret: String,
     val deviceId: String,
     val deviceName: String,
+    val dataKey: String = "",
+    val name: String = "",
 )
 
 data class TileConfig(
@@ -39,6 +41,8 @@ class Store(context: Context) {
             secret = prefs.getString("secret", "") ?: "",
             deviceId = device,
             deviceName = prefs.getString("device_name", "PC") ?: "PC",
+            dataKey = prefs.getString("data_key", "") ?: "",
+            name = prefs.getString("name", "") ?: "",
         )
     }
 
@@ -49,6 +53,8 @@ class Store(context: Context) {
             .putString("secret", session.secret)
             .putString("device", session.deviceId)
             .putString("device_name", session.deviceName)
+            .putString("data_key", session.dataKey)
+            .putString("name", session.name)
             .apply()
     }
 
