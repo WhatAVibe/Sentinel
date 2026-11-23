@@ -396,6 +396,16 @@ class SettingsPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Column(
               children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: state.notificationPrivacy,
+                  onChanged: state.setNotificationPrivacy,
+                  title: const Text('Hide notification contents',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Shows “Open Sentinel to view this event” instead of titles and details',
+                      style: TextStyle(fontSize: 11, color: C.muted)),
+                ),
+                const Divider(color: C.border, height: 1),
                 _NotifyRow(state: state, category: 'security', title: 'Security events',
                     subtitle: 'Locks, away mode, unlocks, pairing'),
                 const Divider(color: C.border, height: 1),
@@ -511,7 +521,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Line('App', 'Sentinel 2.0.0'),
+                const _Line('App', 'Sentinel 2.0.1'),
                 _Line('Relay', state.relayVersion.isEmpty ? 'checking…' : state.relayVersion),
                 _Line('Agent', state.device?.agentVersion.isEmpty ?? true
                     ? 'unknown'

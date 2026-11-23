@@ -782,8 +782,16 @@ def agent_events():
             and (str(e.get("severity")) in ("warning",) or str(e.get("category")) in ("security", "message"))
         ]
         if important:
-            titles = "; ".join(str(e.get("title") or "")[:90] for e in important[:3])
-            push(cfg(), str(important[0].get("title") or "Sentinel")[:100], titles)
+            lines = []
+            for event in important[:3]:
+                detail = event.get("detail") or {}
+                message = str(detail.get("message") or "").strip()
+                title = str(event.get("title") or "").strip()
+                text = message or title
+                if text:
+                    lines.append(text[:160])
+            if lines:
+                push(cfg(), str(important[0].get("title") or "Sentinel")[:100], "\n".join(lines))
     return jsonify(ok=True, count=len(out))
 
 
@@ -1382,14 +1390,28 @@ def create_companion(did):
         return jsonify(error="rate_limited", retry_after=3600), 429
     name = str(body.get("name") or "").strip()[:64] or "Watch"
     token = new_token()
-    mid = uuid.uuid4().hex
     now = now_ms()
-    db().execute(
-        "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, last_seen, uid, "
-        "confirmed, app_version, kind) VALUES (?,?,?,?,?,?,NULL,1,'',?)",
-        (mid, name, did, hash_token(token), now, now, kind),
+    existing = db().all(
+        "SELECT id FROM mobiles WHERE device_id=? AND kind=? AND name=? ORDER BY created_at DESC",
+        (did, kind, name),
     )
-    db().audit(g.actor, "companion.created", {"device": did, "mobile": mid, "kind": kind, "name": name})
+    if existing:
+        mid = existing[0]["id"]
+        db().execute(
+            "UPDATE mobiles SET token_hash=?, last_seen=?, confirmed=1, app_version='' WHERE id=?",
+            (hash_token(token), now, mid),
+        )
+        for row in existing[1:]:
+            db().execute("DELETE FROM mobiles WHERE id=?", (row["id"],))
+    else:
+        mid = uuid.uuid4().hex
+        db().execute(
+            "INSERT INTO mobiles (id, name, device_id, token_hash, created_at, last_seen, uid, "
+            "confirmed, app_version, kind) VALUES (?,?,?,?,?,?,NULL,1,'',?)",
+            (mid, name, did, hash_token(token), now, now, kind),
+        )
+    db().audit(g.actor, "companion.created" if not existing else "companion.refreshed",
+               {"device": did, "mobile": mid, "kind": kind, "name": name})
     hub().push_to_device_clients(did, {"type": "phones"})
     device = db().one("SELECT * FROM devices WHERE id = ?", (did,)) or g.device
     return jsonify(

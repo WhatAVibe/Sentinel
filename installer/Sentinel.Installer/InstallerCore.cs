@@ -27,7 +27,10 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "3.0.0";
+    public const string ProductVersion = "3.0.1";
+    public const string AgentVersion = "2.0.1";
+    public const string PhoneVersion = "2.0.1";
+    public const string WatchVersion = "2.0.1";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
     public const string ReleasesUrl = Repository + "/releases/latest";
     public const string RelayGuideUrl = Repository + "/blob/main/docs/SETUP.md";

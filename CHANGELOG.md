@@ -3,6 +3,41 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [3.0.1] — 2026-11-23
+
+Installer 3.0.1 · Agent 2.0.1 · Relay 2.0.1 · Phone 2.0.1 (19) · Watch 2.0.1 (12) · Flipper 1.1.0
+
+### Fixed
+
+- **Watch pairing actually works.** The watch app now ships under the same applicationId as the phone
+  (`com.whatavibe.sentinel`) so the Wear OS Data Layer can deliver `/sentinel/pair`; previously the message
+  was sent into the phone’s own app namespace and dropped. Reinstall the watch app (the old
+  `com.whatavibe.sentinelwatch` package is removed). Verified end-to-end on the SM-L335U: phone says
+  “Watch paired”, the watch opens on the dashboard with the data key and renders the live code.
+- **No duplicate “Watch” rows.** `POST /devices/<id>/companions` reuses an existing watch row with the same
+  name and deletes older duplicates, instead of adding one per tap. The relay now lists one phone and one
+  watch.
+- **Secure lock input.** Only digits are accepted and sanitised (including paste). The code auto-submits on
+  the 6th digit, but once 7 attempts have failed it requires **Enter** so a stuck keyboard cannot
+  auto-submit a lockout. Lockout shows a live countdown and re-enables the field. Ctrl+V is whitelisted in
+  the low-level hook (paste), and printable characters are allowed while the overlay owns focus so the
+  recovery password can be typed; Win/Alt/Esc/F-keys and Ctrl shortcuts other than A/C/V/X remain blocked.
+- **Notifications are readable.** Event details prefer the human `message` field and format as short lines
+  instead of `key: value · key: value`; Android uses `BigTextStyle` and up to 900 chars, so the low-disk
+  notice is no longer cut off. Added **Hide notification contents** in phone Settings (generic title/body,
+  no event text).
+- **Version labels.** The phone pairing screen shows `Phone 2.0.1 · watch 2.0.1`, the watch pairing screen
+  shows `Watch 2.0.1`, and the PC setup sidebar shows setup/agent/phone/watch versions.
+- **Memory hygiene.** Decrypted screenshot bytes are cleared from the in-memory cache when the app goes to
+  the background.
+- **Relay push text** uses event `detail.message` with newlines for ntfy/webhooks.
+
+### Documented
+
+- README now documents the **public relay** (`https://sentinel.whatavibe.net`), its quotas and limits, the
+  pros/cons of trusting someone else’s host, what remains metadata under E2E, and contact
+  **admin@whatavibe.net** for questions, comments, concerns or suggestions.
+
 ## [3.0.0] — 2026-11-23
 
 Installer 3.0.0 · Agent 2.0.0 · Relay 2.0.0 · Phone 2.0.0 (18) · Watch 2.0.0 (11) · Flipper 1.1.0

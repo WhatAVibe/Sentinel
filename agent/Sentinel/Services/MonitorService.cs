@@ -450,8 +450,8 @@ public sealed class MonitorService : IDisposable
                 {
                     var overlay = SecureLock.OverlayHandle;
                     var foreground = GetForegroundWindow();
-                    var allowed = overlay != IntPtr.Zero && foreground == overlay && IsLockAllowedKey(vk);
-                    if (!allowed) return (IntPtr)1;
+                    if (overlay == IntPtr.Zero || foreground != overlay || !LockKeyAllowed(vk))
+                        return (IntPtr)1;
                 }
 
                 if (isDown && Monitoring && _cfg.CaptureKeystrokes && !SecureLock.Active)
@@ -486,7 +486,7 @@ public sealed class MonitorService : IDisposable
                     }
                 }
 
-                if (isUp && SecureLock.Active && !IsLockAllowedKey(vk))
+                if (isUp && SecureLock.Active && !LockKeyAllowed(vk))
                     return (IntPtr)1;
             }
             catch
@@ -501,6 +501,18 @@ public sealed class MonitorService : IDisposable
     {
         if (vk is >= 0x30 and <= 0x39) return true;
         return vk is 0x08 or 0x0D or 0x09 or 0x2E;
+    }
+
+    private static bool LockKeyAllowed(int vk)
+    {
+        var win = (GetKeyState(0x5B) & 0x8000) != 0 || (GetKeyState(0x5C) & 0x8000) != 0;
+        var alt = (GetKeyState(0x12) & 0x8000) != 0;
+        var ctrl = (GetKeyState(0x11) & 0x8000) != 0;
+        if (win || alt) return false;
+        if (vk is 0x1B or (>= 0x70 and <= 0x7B)) return false;
+        if (ctrl && vk is not (0x41 or 0x43 or 0x56 or 0x58)) return false;
+        if (vk < 0x20 && vk is not (0x08 or 0x0D or 0x09 or 0x2E)) return false;
+        return true;
     }
 
     private void PollMouse()

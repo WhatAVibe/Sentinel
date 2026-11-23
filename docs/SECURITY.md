@@ -230,4 +230,4 @@ self-hosted ntfy instance; treat the topic as a secret (anyone who knows it can 
 ## Reporting
 
 This is a personal project; keep a private copy of the repo and treat any change to the pairing or TOTP code
-as security-sensitive.
+as security-sensitive. Report issues privately to **admin@whatavibe.net**.

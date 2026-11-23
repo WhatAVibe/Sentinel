@@ -21,26 +21,31 @@ class Notifier {
     }
   }
 
-  static Future<void> show(String title, String body) async {
+  static Future<void> show(String title, String body, {bool hideDetails = false}) async {
     if (!_ready) return;
     final now = DateTime.now();
     if (title == _lastTitle && now.difference(_last) < const Duration(seconds: 8)) return;
     _last = now;
     _lastTitle = title;
+    final safeTitle = hideDetails ? 'Sentinel' : title;
+    final safeBody = hideDetails
+        ? 'Open Sentinel to view this event.'
+        : (body.length > 900 ? '${body.substring(0, 897)}...' : body);
     try {
-      const details = NotificationDetails(
+      final details = NotificationDetails(
         android: AndroidNotificationDetails(
           'sentinel_alerts',
           'Sentinel alerts',
           channelDescription: 'Away mode, messages and security events',
           importance: Importance.high,
           priority: Priority.high,
+          styleInformation: BigTextStyleInformation(safeBody, contentTitle: safeTitle),
         ),
       );
       await _plugin.show(
         now.millisecondsSinceEpoch ~/ 1000 % 100000,
-        title,
-        body.length > 300 ? body.substring(0, 300) : body,
+        safeTitle,
+        safeBody,
         details,
       );
     } catch (_) {

@@ -228,6 +228,8 @@ class _PairScreenState extends State<PairScreen> {
                                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                             Text('Pair with your PC',
                                 style: TextStyle(fontSize: 12, color: C.muted)),
+                            Text('Phone $sentinelAppVersion · watch $sentinelWatchVersion',
+                                style: TextStyle(fontSize: 10, color: C.muted)),
                           ],
                         ),
                       ],

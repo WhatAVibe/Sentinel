@@ -30,7 +30,9 @@
                 <TextBox x:Name="CodeBox" FontFamily="Consolas" FontSize="26" Padding="12,9"
                          TextAlignment="Center" MaxLength="6" BorderThickness="1"
                          Background="#0E1218" Foreground="{StaticResource Text}"
-                         BorderBrush="{StaticResource Line}" />
+                         BorderBrush="{StaticResource Line}"
+                         PreviewTextInput="CodeBox_PreviewTextInput"
+                         TextChanged="CodeBox_TextChanged" />
                 <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}" FontSize="12"
                            Margin="0,6,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
                 <Button Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,12,0,0"

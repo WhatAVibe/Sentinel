@@ -193,6 +193,7 @@ private fun PairScreen(store: Store, onPaired: (Session) -> Unit) {
     ) {
         Text("Sentinel", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Text("Pair this watch", fontSize = 11.sp, color = Muted)
+        Text("Watch 2.0.1", fontSize = 9.sp, color = Muted)
         OutlinedTextField(
             value = server,
             onValueChange = { server = it },
@@ -595,7 +596,7 @@ private fun SettingsScreen(session: Session, onBack: () -> Unit, onTiles: () -> 
         Button(onClick = onUnpair, modifier = Modifier.fillMaxWidth()) {
             Text("Unpair this watch", color = Color(0xFFFF6B6B))
         }
-        Text("Sentinel Watch 2.0.0", fontSize = 9.sp, color = Muted)
+        Text("Sentinel Watch 2.0.1", fontSize = 9.sp, color = Muted)
         Text("TOTP stays on this watch. Protect it with a screen lock.", fontSize = 8.sp, color = Muted,
             textAlign = TextAlign.Center)
     }

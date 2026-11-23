@@ -149,6 +149,15 @@ class SessionStore {
     await prefs.setBool('widget_show_code', value);
   }
 
+  Future<bool> notificationPrivacy() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('notify_privacy') ?? false;
+  }
+
+  Future<void> setNotificationPrivacy(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notify_privacy', value);
+  }
   Future<bool> notificationEnabled(String category) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('notify_$category') ?? true;

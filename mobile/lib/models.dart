@@ -202,7 +202,22 @@ class ActivityEvent {
   String get detailText {
     final d = detail;
     if (d == null || d.isEmpty) return '';
-    return d.entries.map((e) => '${e.key}: ${e.value}').join('  ·  ');
+    final message = d['message'];
+    if (message is String && message.trim().isNotEmpty) return message.trim();
+    final preferred = ['by', 'reason', 'source', 'status', 'key', 'window', 'process'];
+    final lines = <String>[];
+    for (final key in preferred) {
+      final value = d[key];
+      if (value == null || '$value'.isEmpty) continue;
+      lines.add('${key[0].toUpperCase()}${key.substring(1)}: $value');
+      if (lines.length == 3) break;
+    }
+    if (lines.isEmpty) {
+      for (final entry in d.entries.take(3)) {
+        lines.add('${entry.key.replaceAll('_', ' ')}: ${entry.value}');
+      }
+    }
+    return lines.join('\n');
   }
 
   factory ActivityEvent.fromJson(Map<String, dynamic> json) {
@@ -446,7 +461,8 @@ const MethodChannel _deviceChannel = MethodChannel('sentinel/device');
 /// devices show "Samsung SM-S948U1" instead of a generic "Sentinel".
 String sentinelDeviceName = '';
 
-const sentinelAppVersion = '2.0.0';
+const sentinelAppVersion = '2.0.1';
+const sentinelWatchVersion = '2.0.1';
 
 Future<void> loadDeviceName() async {
   try {

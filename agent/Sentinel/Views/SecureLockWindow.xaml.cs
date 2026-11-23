@@ -9,13 +9,17 @@ namespace Sentinel.Views;
 public partial class SecureLockWindow : Window
 {
     private readonly DispatcherTimer _guard;
+    private DispatcherTimer? _lockTimer;
     private bool _allowClose;
+    private bool _submitting;
+    private int _failures;
 
     public SecureLockWindow(string message)
     {
         InitializeComponent();
         _guard = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _guard.Tick += Guard_Tick;
+        DataObject.AddPastingHandler(CodeBox, CodeBox_Pasting);
         MessageText.Text = string.IsNullOrWhiteSpace(message)
             ? "Sentinel locked this PC from your phone."
             : message;
@@ -31,7 +35,11 @@ public partial class SecureLockWindow : Window
             var handle = new WindowInteropHelper(this).Handle;
             SecureLock.OverlayHandle = handle;
         };
-        Closed += (_, _) => _guard.Stop();
+        Closed += (_, _) =>
+        {
+            _guard.Stop();
+            _lockTimer?.Stop();
+        };
         Closing += (_, e) =>
         {
             if (!_allowClose) e.Cancel = true;
@@ -142,26 +150,109 @@ public partial class SecureLockWindow : Window
         }
     }
 
-    private void Unlock_Click(object sender, RoutedEventArgs e)
+    private void Unlock_Click(object sender, RoutedEventArgs e) => TryUnlock();
+
+    private void CodeBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
     {
+        e.Handled = e.Text.Any(c => !char.IsDigit(c));
+    }
+
+    private void CodeBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        var digits = new string(CodeBox.Text.Where(char.IsDigit).Take(6).ToArray());
+        if (digits != CodeBox.Text)
+        {
+            CodeBox.Text = digits;
+            CodeBox.CaretIndex = digits.Length;
+            return;
+        }
+        if (digits.Length == 6 && _failures < 7) TryUnlock();
+    }
+
+    private void CodeBox_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!e.DataObject.GetDataPresent(DataFormats.Text))
+        {
+            e.CancelCommand();
+            return;
+        }
+        var text = new string(($"{e.DataObject.GetData(DataFormats.Text)}").Where(char.IsDigit).Take(6).ToArray());
+        if (text.Length == 0)
+        {
+            e.CancelCommand();
+            return;
+        }
+        CodeBox.Text = text;
+        CodeBox.CaretIndex = text.Length;
+        e.CancelCommand();
+    }
+
+    private void TryUnlock()
+    {
+        if (_submitting || _lockTimer != null) return;
         var code = CodeBox.Text.Trim();
         if (code.Length != 6)
         {
             ShowError("Enter all six digits.");
             return;
         }
-        if (!App.Host.VerifyCode(code))
+        _submitting = true;
+        try
         {
-            var locked = App.Host.CodeLockoutRemaining;
-            ShowError(locked > TimeSpan.Zero
-                ? $"Too many attempts. Try again in {(int)Math.Ceiling(locked.TotalSeconds)}s."
-                : "That code is not valid right now.");
-            CodeBox.SelectAll();
-            CodeBox.Focus();
-            return;
+            if (!App.Host.VerifyCode(code))
+            {
+                _failures++;
+                var locked = App.Host.CodeLockoutRemaining;
+                if (locked > TimeSpan.Zero)
+                {
+                    _failures = 0;
+                    ShowLockout(locked);
+                }
+                else if (_failures >= 7)
+                {
+                    ShowError("Too many failed attempts. Press Enter to confirm the last try.");
+                }
+                else
+                {
+                    ShowError("That code is not valid right now.");
+                }
+                CodeBox.SelectAll();
+                CodeBox.Focus();
+                return;
+            }
+            _failures = 0;
+            _lockTimer?.Stop();
+            _lockTimer = null;
+            ErrorText.Visibility = Visibility.Collapsed;
+            App.Host.ExitSecureLock("desktop-code");
         }
-        ErrorText.Visibility = Visibility.Collapsed;
-        App.Host.ExitSecureLock("desktop-code");
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void ShowLockout(TimeSpan remaining)
+    {
+        CodeBox.IsEnabled = false;
+        _lockTimer?.Stop();
+        _lockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _lockTimer.Tick += (_, _) =>
+        {
+            var left = App.Host.CodeLockoutRemaining;
+            if (left <= TimeSpan.Zero)
+            {
+                _lockTimer?.Stop();
+                _lockTimer = null;
+                CodeBox.IsEnabled = true;
+                ErrorText.Visibility = Visibility.Collapsed;
+                CodeBox.Focus();
+                return;
+            }
+            ShowError($"Too many attempts. Try again in {(int)Math.Ceiling(left.TotalSeconds)}s.");
+        };
+        _lockTimer.Start();
+        ShowError($"Too many attempts. Try again in {(int)Math.Ceiling(remaining.TotalSeconds)}s.");
     }
 
     private void ShowError(string message)

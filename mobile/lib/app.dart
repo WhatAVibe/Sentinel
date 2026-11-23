@@ -39,6 +39,7 @@ class _SentinelAppState extends State<SentinelApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     if (lifecycle == AppLifecycleState.paused || lifecycle == AppLifecycleState.inactive) {
+      _state.clearShotCache();
       _backgroundedAt ??= DateTime.now();
       return;
     }

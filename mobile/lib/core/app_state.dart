@@ -38,6 +38,7 @@ class AppState extends ChangeNotifier {
   bool hasPin = false;
   bool widgetAllowWithoutUnlock = false;
   bool widgetShowCode = true;
+  bool notificationPrivacy = false;
   String? lastError;
   String relayVersion = '';
   final Map<String, bool> notifications = {
@@ -79,6 +80,7 @@ class AppState extends ChangeNotifier {
     canUseBiometrics = await Biometrics.available();
     widgetAllowWithoutUnlock = await store.widgetAllowWithoutUnlock();
     widgetShowCode = await store.widgetShowCode();
+    notificationPrivacy = await store.notificationPrivacy();
     for (final key in notifications.keys) {
       notifications[key] = await store.notificationEnabled(key);
     }
@@ -152,6 +154,12 @@ class AppState extends ChangeNotifier {
     widgetAllowWithoutUnlock = value;
     await store.setWidgetAllowWithoutUnlock(value);
     await syncWidgets();
+    notifyListeners();
+  }
+
+  Future<void> setNotificationPrivacy(bool value) async {
+    notificationPrivacy = value;
+    await store.setNotificationPrivacy(value);
     notifyListeners();
   }
 
@@ -249,7 +257,8 @@ class AppState extends ChangeNotifier {
               item.category == 'screenshot') {
             final key = notifications.containsKey(item.category) ? item.category : 'other';
             if (notifications[key] ?? true) {
-              Notifier.show(item.title, item.detailText.isEmpty ? item.title : item.detailText);
+              Notifier.show(item.title, item.detailText.isEmpty ? item.title : item.detailText,
+                hideDetails: notificationPrivacy);
             }
           }
         }
@@ -269,7 +278,7 @@ class AppState extends ChangeNotifier {
           error: failed,
         );
         if (reply.isNotEmpty) {
-          Notifier.show('Reply from your PC', reply);
+          Notifier.show('Reply from your PC', reply, hideDetails: notificationPrivacy);
         }
         break;
       case 'shots':
@@ -583,6 +592,11 @@ class AppState extends ChangeNotifier {
   String get liveCode => totpCode(session?.totpSecret ?? '');
 
   int get codeSeconds => totpSecondsRemaining();
+
+  void clearShotCache() {
+    _shotCache.clear();
+    _shotCacheOrder.clear();
+  }
 
   Future<Uint8List> shotBytes(Shot shot) async {
     final cached = _shotCache[shot.id];

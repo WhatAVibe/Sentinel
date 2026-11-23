@@ -44,7 +44,7 @@ public partial class MainWindow : Window
         }
         LocationBox.Text = _installDir;
         ServerBox.Text = TryReadServer(_installDir);
-        VersionText.Text = $"Setup {InstallerCore.ProductVersion}";
+        VersionText.Text = $"Setup {InstallerCore.ProductVersion} · agent {InstallerCore.AgentVersion} · phone {InstallerCore.PhoneVersion} · watch {InstallerCore.WatchVersion}";
         ModeText.Text = _updateMode ? "Update / Repair detected" : "";
         FinishTitle.Text = _updateMode ? "Update / Repair" : "Ready to install";
         FinishSummary.Text = _updateMode
