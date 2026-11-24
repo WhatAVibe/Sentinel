@@ -439,7 +439,13 @@ public partial class SettingsView : UserControl
     {
         if (!App.Host.Config.Paired)
         {
-            MessageBox.Show("Pair this PC first.", "Sentinel", MessageBoxButton.OK, MessageBoxImage.Information);
+            var pair = new PairWindow { Owner = Window.GetWindow(this) };
+            if (pair.ShowDialog() == true)
+            {
+                RefreshLiveStatus();
+                _ = LoadPhonesAsync();
+                ServerStatus.Text = "Paired.";
+            }
             return;
         }
         new PhoneLinkWindow { Owner = Window.GetWindow(this) }.ShowDialog();
@@ -672,8 +678,10 @@ public partial class SettingsView : UserControl
         {
             ServerStatus.Text = cfg.Paired
                 ? status + (string.IsNullOrEmpty(host.Runtime.LastError) ? "" : $" · {host.Runtime.LastError}")
-                : "Not paired. Enter the server address and pair from your device.";
+                : "Not paired. Use Pair this PC to show the QR code.";
         }
+        if (AddDeviceButton != null)
+            AddDeviceButton.Content = cfg.Paired ? "Pair another device" : "Pair this PC";
 
         var adb = host.Adb;
         var devices = adb.Devices.Count == 0

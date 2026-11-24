@@ -3,6 +3,30 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [3.0.3] — 2026-11-24
+
+Installer 3.0.3 · Agent 2.0.3 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1 (12) · Flipper 1.1.0
+
+### Fixed
+
+- **Cancelling pairing no longer leaves you stuck.** The tray now has **Pair this PC** when unpaired, the
+  Settings button changes to **Pair this PC** and opens the QR pairing window instead of “Pair this PC
+  first.”, and cancelling returns to a usable dashboard instead of a dead end. Opening Sentinel from the
+  tray/Start menu while unpaired opens the pairing window.
+- **One startup entry.** Only `SentinelAgent` is registered in `HKCU\...\Run`; the supervisor is started by
+  the agent, not a second Run value. Upgrades and the agent clean up the legacy `SentinelSupervisor`,
+  `Sentinel`, `PCMonitorAgent` and `PCMonitorSupervisor` values, so Task Manager no longer shows two Sentinel
+  entries pointing at the same exe.
+- **Uninstall removes everything local.** Local data is always wiped (pairing, encryption key, TOTP secret,
+  recovery password, logs, screenshots, WebView2 data) and the uninstaller also removes legacy
+  `%APPDATA%\PCMonitor` / `%LOCALAPPDATA%\PCMonitor`, `%LOCALAPPDATA%\Sentinel`, the temporary WebAuthn page
+  and key log, the Run entries and the uninstall registry key. Relay data is deleted when “Unpair” is checked
+  and the relay is reachable.
+
+### Changed
+
+- Agent 2.0.3 and installer 3.0.3; phone, watch and relay unchanged from 3.0.2.
+
 ## [3.0.2] — 2026-11-23
 
 Installer 3.0.2 · Agent 2.0.2 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1 (12) · Flipper 1.1.0

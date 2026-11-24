@@ -60,20 +60,36 @@ public partial class UninstallWindow : Window
         StatusText.Text = "Closing…";
         await Task.Delay(300);
         Application.Current.Shutdown();
-        ScheduleDelete(installDir, WipeCheck.IsChecked == true);
+        ScheduleDelete(installDir);
     }
 
-    private static void ScheduleDelete(string dir, bool wipe)
+    private static void ScheduleDelete(string dir)
     {
         try
         {
-            var command = wipe
-                ? $"ping -n 3 127.0.0.1 >nul & rmdir /s /q \"{dir}\""
-                : $"ping -n 3 127.0.0.1 >nul & del /f /q \"{Path.Combine(dir, "Sentinel.exe")}\"";
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var temp = Path.GetTempPath();
+            var targets = new[]
+            {
+                dir,
+                Path.Combine(appData, "PCMonitor"),
+                Path.Combine(localAppData, "Sentinel"),
+                Path.Combine(localAppData, "PCMonitor"),
+                Path.Combine(temp, "sentinel-webauthn")
+            };
+            var removals = new List<string> { "ping -n 3 127.0.0.1 >nul" };
+            foreach (var target in targets)
+            {
+                if (Directory.Exists(target))
+                    removals.Add($"rmdir /s /q \"{target}\"");
+            }
+            var keyLog = Path.Combine(temp, "sentinel-key.log");
+            if (File.Exists(keyLog)) removals.Add($"del /f /q \"{keyLog}\"");
             Process.Start(new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = "/c " + command,
+                Arguments = "/c " + string.Join(" & ", removals),
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 WindowStyle = ProcessWindowStyle.Hidden

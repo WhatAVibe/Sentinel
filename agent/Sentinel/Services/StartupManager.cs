@@ -7,7 +7,6 @@ public static class StartupManager
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string Name = "SentinelAgent";
-    private const string WatchdogName = "SentinelSupervisor";
 
     public static bool IsEnabled()
     {
@@ -33,17 +32,37 @@ public static class StartupManager
                 var path = Environment.ProcessPath;
                 if (string.IsNullOrEmpty(path)) return;
                 key.SetValue(Name, $"\"{path}\" --tray");
-                key.SetValue(WatchdogName, $"\"{path}\" --supervise");
             }
             else
             {
                 key.DeleteValue(Name, false);
-                key.DeleteValue(WatchdogName, false);
             }
+            CleanupLegacy(key);
         }
         catch
         {
             // ignored
+        }
+    }
+
+    public static void CleanupLegacy()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey, true);
+            if (key != null) CleanupLegacy(key);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void CleanupLegacy(RegistryKey key)
+    {
+        foreach (var name in new[] { "SentinelSupervisor", "Sentinel", "PCMonitorAgent", "PCMonitorSupervisor" })
+        {
+            try { key.DeleteValue(name, false); } catch { }
         }
     }
 }

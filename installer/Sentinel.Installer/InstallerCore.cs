@@ -27,8 +27,8 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "3.0.2";
-    public const string AgentVersion = "2.0.2";
+    public const string ProductVersion = "3.0.3";
+    public const string AgentVersion = "2.0.3";
     public const string PhoneVersion = "2.0.2";
     public const string WatchVersion = "2.0.1";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
@@ -234,12 +234,14 @@ public static class InstallerCore
         if (enabled)
         {
             key.SetValue(RunValueName, $"\"{AgentExe(dir)}\" --tray");
-            key.SetValue(SupervisorValueName, $"\"{AgentExe(dir)}\" --supervise");
         }
         else
         {
             key.DeleteValue(RunValueName, false);
-            key.DeleteValue(SupervisorValueName, false);
+        }
+        foreach (var legacy in new[] { SupervisorValueName, "Sentinel", "PCMonitorAgent", "PCMonitorSupervisor" })
+        {
+            try { key.DeleteValue(legacy, false); } catch { }
         }
     }
 

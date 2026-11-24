@@ -113,8 +113,9 @@ public partial class App : Application
         Host = new AgentHost();
         Host.Notice += (title, body) => Tray?.ShowBalloon(title, body);
         Host.ToastRequested += text => UiState.Post(() => new ToastWindow("Message from your phone", text).Show());
-        Tray = new TrayService(Host, ShowDashboard, ShowSettings, RequestDisarm, RequestExit);
+        Tray = new TrayService(Host, ShowDashboard, ShowPairing, ShowSettings, RequestDisarm, RequestExit);
         Host.Start();
+        StartupManager.CleanupLegacy();
         Host.AwayChanged += () => UiState.Post(OnAwayChanged);
         StartWatchdog();
         Host.RestoreSecureLockIfNeeded();
@@ -207,6 +208,16 @@ public partial class App : Application
             RequestDisarm();
             return;
         }
+        if (!Host.Config.Paired)
+        {
+            ShowPairing();
+            return;
+        }
+        OpenDashboardWindow();
+    }
+
+    private void OpenDashboardWindow()
+    {
         UiState.Post(() =>
         {
             if (_shuttingDown || SecureLock.Active || Host.Away) return;
@@ -233,7 +244,7 @@ public partial class App : Application
             RequestDisarm();
             return;
         }
-        ShowDashboard();
+        OpenDashboardWindow();
         UiState.Post(() => _main?.NavigateTo("settings"));
     }
 
@@ -247,12 +258,12 @@ public partial class App : Application
             var result = window.ShowDialog();
             if (result == true)
             {
-                ShowDashboard();
+                OpenDashboardWindow();
                 Tray.Update();
                 UiState.Post(MaybeShowTutorial);
                 return;
             }
-            if (_main == null) ShowDashboard();
+            if (_main == null) OpenDashboardWindow();
         });
     }
 

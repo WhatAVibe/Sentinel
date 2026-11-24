@@ -19,9 +19,10 @@
         <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="1"
                 CornerRadius="12" Padding="16" Margin="0,18,0,0">
             <StackPanel>
-                <CheckBox x:Name="WipeCheck" Content="Delete all data (config, logs, screenshots)" IsChecked="True" />
+                <CheckBox x:Name="WipeCheck" Content="Delete all local data (config, keys, logs, screenshots)"
+                          IsChecked="True" IsEnabled="False" />
                 <CheckBox x:Name="UnpairCheck" Content="Unpair this PC from the relay and delete its data" IsChecked="True" />
-                <TextBlock Text="Wiping data removes the pairing, TOTP secret, recovery password, logs and local screenshots. The relay copy is only deleted when unpair is checked."
+                <TextBlock Text="All local data is always removed: pairing, encryption key, TOTP secret, recovery password, logs, screenshots and WebView data. The relay copy is deleted when unpair is checked; if the relay is unreachable, remove the device from another linked device."
                            Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
             </StackPanel>
         </Border>

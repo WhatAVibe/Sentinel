@@ -11,6 +11,7 @@ public sealed class TrayService : IDisposable
     private readonly NotifyIcon _icon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _openItem;
+    private readonly ToolStripMenuItem _pairItem;
     private readonly ToolStripMenuItem _settingsItem;
     private readonly ToolStripMenuItem _exitItem;
     private readonly ToolStripMenuItem _awayItem;
@@ -18,14 +19,16 @@ public sealed class TrayService : IDisposable
     private readonly ToolStripMenuItem _startupItem;
     private readonly Icon _generatedIcon;
     private readonly Action _show;
+    private readonly Action _pair;
     private readonly Action _settings;
     private readonly Action _disarm;
     private readonly Action _exit;
 
-    public TrayService(AgentHost host, Action show, Action settings, Action disarm, Action exit)
+    public TrayService(AgentHost host, Action show, Action pair, Action settings, Action disarm, Action exit)
     {
         _host = host;
         _show = show;
+        _pair = pair;
         _settings = settings;
         _disarm = disarm;
         _exit = exit;
@@ -35,6 +38,10 @@ public sealed class TrayService : IDisposable
         _openItem = new ToolStripMenuItem("Open Sentinel", null, (_, _) => _show())
         {
             Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        };
+        _pairItem = new ToolStripMenuItem("Pair this PC", null, (_, _) => _pair())
+        {
+            Visible = false
         };
         _settingsItem = new ToolStripMenuItem("Settings", null, (_, _) => _settings());
         _exitItem = new ToolStripMenuItem("Exit", null, (_, _) => _exit());
@@ -60,6 +67,7 @@ public sealed class TrayService : IDisposable
             Font = new Font("Segoe UI", 9f)
         };
         menu.Items.Add(_openItem);
+        menu.Items.Add(_pairItem);
         menu.Items.Add(_statusItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Lock PC", null, (_, _) => PowerActions.Lock()));
@@ -103,6 +111,8 @@ public sealed class TrayService : IDisposable
             ? "Locked · secure lock active"
             : paired ? $"{status} · {_host.Config.DeviceName}" : "Not paired";
         _openItem.Enabled = !locked;
+        _pairItem.Visible = !locked && !paired;
+        _pairItem.Enabled = !locked && !away;
         _settingsItem.Enabled = !locked && !away;
         _startupItem.Enabled = !locked && !away;
         _exitItem.Enabled = !locked;
