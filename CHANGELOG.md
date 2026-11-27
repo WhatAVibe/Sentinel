@@ -92,16 +92,20 @@ Installer 3.1.0 · Agent 2.1.0 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1
   matches the installer payload, and `sentinel-key.exe` hash matches `usbkey\target\release\sentinel-key.exe`.
   The guard is running and the drive now carries a v2 marker (363 bytes, header version 2).
 
+### Release
+
+- Published: **https://github.com/WhatAVibe/Sentinel/releases/tag/v3.1.0**
+- Tag `v3.1.0`, commit `937185a`; 10 assets uploaded.
+- Live `SHA256SUMS.txt` matches the staged checksum file.
+- `latest/download/Sentinel-Setup-3.1.0.exe` and `latest/download/SHA256SUMS.txt` return HTTP 200.
+
 ### Open items
 
 - The guard's live insert/remove lock action still needs a physical unplug test while a phone secure lock is
-  active. The source-level idempotence and installed binaries are verified; the actual screen transition is
-  the remaining observation.
+  active. The source-level idempotence, installed binaries and API behavior are verified; the actual screen
+  transition is the remaining observation.
 - Only the `SENTINEL.KEY` marker is encrypted. The rest of the USB drive is normal storage; use BitLocker To
   Go if the whole drive needs encryption.
-- 3.1.0 artifacts are built locally (`installer\out\Sentinel Setup.exe` and
-  `usbkey\target\release\sentinel-key.exe`); the GitHub release, `SHA256SUMS.txt` and download links are not
-  published yet. No commit, tag or push has been made.
 
 ## [3.0.3] — 2026-11-24
 
