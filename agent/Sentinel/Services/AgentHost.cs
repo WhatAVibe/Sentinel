@@ -30,6 +30,13 @@ public sealed class AgentHost : IDisposable
     public string AwayReason { get; private set; } = "";
     public DateTime? AwaySince { get; private set; }
 
+    public string SentinelKeyId { get; private set; } = "";
+    public string SentinelKeyLabel { get; private set; } = "";
+    private DateTime _sentinelKeySeenUtc = DateTime.MinValue;
+    public bool SentinelKeyPresent =>
+        !string.IsNullOrEmpty(SentinelKeyId) &&
+        DateTime.UtcNow - _sentinelKeySeenUtc < TimeSpan.FromSeconds(45);
+
     private bool _nameDirty;
     private long _nameChangedAtMs;
 
@@ -263,6 +270,8 @@ public sealed class AgentHost : IDisposable
         AgentUptimeSeconds = (long)(DateTime.UtcNow - StartedAt).TotalSeconds,
         LocalApi = Local.Running,
         PhonePresent = Adb.TrustedPresent,
+        KeyPresent = SentinelKeyPresent,
+        KeyLabel = SentinelKeyLabel,
         SecureLock = Sentinel.Services.SecureLock.Active
     };
 
@@ -734,6 +743,8 @@ public sealed class AgentHost : IDisposable
             return "PC · recovery password";
         if (string.Equals(source, "desktop-key", StringComparison.OrdinalIgnoreCase))
             return "PC · security key";
+        if (string.Equals(source, "desktop-usb-key", StringComparison.OrdinalIgnoreCase))
+            return "PC · USB key";
         if (string.Equals(source, "direct", StringComparison.OrdinalIgnoreCase))
             return "PC · direct API";
         var parts = source.Split(':', 3);
@@ -961,8 +972,64 @@ public sealed class AgentHost : IDisposable
         });
     }
 
+    public void SetSentinelKeyPresence(string id, bool present, string label, string drive)
+    {
+        var wasPresent = SentinelKeyPresent;
+        if (present)
+        {
+            SentinelKeyId = id;
+            SentinelKeyLabel = label;
+            _sentinelKeySeenUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            SentinelKeyId = "";
+            SentinelKeyLabel = "";
+            _sentinelKeySeenUtc = DateTime.MinValue;
+        }
+
+        if (wasPresent != present)
+        {
+            OnActivity(new ActivityEventData
+            {
+                Category = "security",
+                Severity = present ? "notice" : "warning",
+                Title = present ? "USB key connected" : "USB key disconnected",
+                Detail = new()
+                {
+                    ["id"] = id,
+                    ["label"] = label,
+                    ["drive"] = drive
+                }
+            });
+            _ = PostStateSafe();
+        }
+    }
+
+    public bool TryUnlockWithSentinelKey(string id, out string error)
+    {
+        if (!SentinelKeyPresent || !string.Equals(id, SentinelKeyId, StringComparison.Ordinal))
+        {
+            error = "key_not_present";
+            return false;
+        }
+        if (!Sentinel.Services.SecureLock.Active)
+        {
+            error = "not_locked";
+            return false;
+        }
+        ExitSecureLock("desktop-usb-key");
+        error = "";
+        return true;
+    }
+
     public void EnterSecureLock(string message)
     {
+        if (Sentinel.Services.SecureLock.Active)
+        {
+            Log.Write("info", "secure lock already active; ignored duplicate request", new { message });
+            return;
+        }
         if (!HasLinkedDevices)
         {
             Notify("Link a device first", "Secure lock needs a linked phone or watch so it can be unlocked. Pair one from Settings.");

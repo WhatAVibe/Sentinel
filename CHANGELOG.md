@@ -3,6 +3,106 @@
 All notable changes to Sentinel. Versions are per component; the installer/product version is what the
 release tags use.
 
+## [3.1.0] - 2026-11-27
+
+Installer 3.1.0 · Agent 2.1.0 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1 (12) · Flipper 1.1.0
+
+### Added
+
+- **Sentinel USB key** (`usbkey/`, Rust). Enroll a removable drive, write an AES-256-GCM `SENTINEL.KEY`
+  marker bound to the drive's hardware fingerprint, and run a guard that can lock the PC when it is removed
+  or release the Sentinel secure lock when it is inserted. The master key is 32 random bytes kept
+  DPAPI-protected in `%APPDATA%\Sentinel\usbkey.json`; no secret is written to the drive.
+- **Agent USB-key state**: `key_present` / `key_label` in `StateDto`, activity events on insert/remove, and
+  authenticated loopback endpoints `POST /local/key/presence` and `POST /local/key/unlock`.
+- **Settings card**: Sentinel -> Settings -> Security -> Sentinel USB key, with status, **Manage key** and
+  **Refresh** buttons.
+- **Installer**: `build.ps1` builds `sentinel-key.exe` with Cargo and packs it next to `Sentinel.exe`; the
+  uninstaller removes it.
+
+### Changed
+
+- **Sentinel Key UI restyle.** The Rust window now uses the Sentinel dark palette (`#0B0D11` background,
+  `#12161C` cards, `#232A35` borders, `#6C8CFF` accent, `#6EE7A8` success), the Sentinel logo, full-width
+  cards, compact status pills and matching 10/18 px radii. Primary, ghost and danger buttons mirror the
+  WPF dashboard and installer controls.
+- **Stronger drive binding.** Marker format v2 adds vendor/product/revision and the volume GUID to the AAD,
+  alongside the hardware serial, volume serial and size. Version 1 markers still verify on the enrolled PC;
+  re-enrolling writes v2.
+- **Faster presence detection.** The guard now checks the removable drive set every 300 ms using
+  `GetLogicalDrives` + `GetDriveTypeW`, and only does full volume identity + marker decryption on a set
+  change or every five seconds while a key is present. `sentinel-key probe` reports full-scan timings.
+- **Setup inside Sentinel.** Settings -> Security -> Sentinel USB key now has **Set up key**, which opens a
+  dark WPF `UsbKeySetupWindow` with drive list, enroll/forget, startup toggle and a link to the full app.
+  The Rust CLI is invoked behind the scenes; **Advanced** still opens the full Sentinel Key window.
+- **Secure lock is now idempotent.** `EnterSecureLock` returns immediately when an overlay is already active,
+  so unplugging the USB key while the phone has secure-locked the PC does not replace the message or stack a
+  second lock. The guard reads `/local/status` first and leaves an active lock alone.
+- **No USB hint in the lock.** Guard-initiated secure lock now says
+  "This PC is locked. Enter your Sentinel code to unlock." It does not name the USB key or suggest looking
+  for a drive.
+- **Documentation and release preparation.** Added root [BUILD.md](BUILD.md), expanded
+  [docs/USB-KEY.md](docs/USB-KEY.md), [SECURITY.md](SECURITY.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+  [installer/README.md](installer/README.md), [usbkey/README.md](usbkey/README.md) and
+  [usbkey/BUILD.md](usbkey/BUILD.md). The release checklist explicitly requires owner approval before any
+  commit push, tag or GitHub release.
+- Moved the canonical repository from `C:\Users\lacel\Documents\GitHub\Sentinel` to
+  `D:\Projects\Sentinel`. Both trees were verified at commit `f01a64f`, every source file matched, and the
+  C: copy was removed.
+
+### Files touched
+
+- New: `usbkey/` (Rust crate), `docs/USB-KEY.md`, `agent/Sentinel/Services/UsbKeyGuard.cs`,
+  `agent/Sentinel/Services/UsbKeyTool.cs`, `agent/Sentinel/Views/UsbKeySetupWindow.xaml`,
+  `agent/Sentinel/Views/UsbKeySetupWindow.xaml.cs`
+- Agent: `Models/ApiModels.cs`, `Services/AgentHost.cs`, `Services/LocalApiServer.cs`, `App.xaml.cs`,
+  `Views/SettingsView.xaml`, `Views/SettingsView.xaml.cs`
+- Installer: `build.ps1`, `Sentinel.Installer/InstallerCore.cs`,
+  `Sentinel.Installer/UninstallWindow.xaml.cs`, `README.md`
+- Docs/config: `README.md`, `SECURITY.md`, `CHANGELOG.md`, `BUILD.md`, `docs/ARCHITECTURE.md`,
+  `docs/USB-KEY.md`, `docs/LOGGING.md`, `.gitignore`, and the root `../AGENTS.md` project map
+
+### Verification
+
+- `cargo test` in `usbkey/`: 3 passed (marker round trip, tamper rejection, wrong-drive rejection).
+- `cargo clippy`: clean.
+- `sentinel-key selftest`: DPAPI ok, AES-256-GCM marker 223 bytes on disk, agent connected.
+- `sentinel-key` GUI: launched, window title `Sentinel Key`, responding.
+- `sentinel-key startup on`: registry value written to
+  `"C:\Windows\System32\wscript.exe" "...\sentinel-key-guard.vbs"`; running the VBS produced the expected
+  hidden guard attempt in `usbkey.log`.
+- `dotnet build Sentinel.sln -c Release`: 0 errors.
+- Loopback probe against a live `AgentHost`: `POST /local/key/presence` -> 200, unlock -> 200, wrong id ->
+  403, absent -> 200, `SecureLock.Active` false after unlock.
+- Real removable drive `E:` (58.6 GB exFAT, disk serial `9C2EE5DD4BD53A0E`, volume `2815975D`): enroll
+  wrote a 233-byte `SENTINEL.KEY` (`SNTK` v1), `status` reported `PRESENT`, and `forget` removed both the
+  marker and README without touching unrelated files on the drive.
+- Legacy v1 marker on that same drive is still recognized as `enrolled` after the v2 identifier change.
+- `sentinel-key probe 5` on the mounted drive: 0.5-0.8 ms per full scan, 0.6 ms average, 1 drive, 1 present.
+- Sentinel Key UI: dark palette/logo/card layout verified in
+  `C:\Users\lacel\AppData\Local\Temp\opencode\sentinel-key-final.png`.
+- Sentinel WPF setup window: loaded from the agent assembly and showed `E:` as `ENROLLED`; screenshot at
+  `C:\Users\lacel\AppData\Local\Temp\opencode\sentinel-usb-setup2.png`.
+- `dotnet build`: 0 errors; installer payload contains the styled `sentinel-key.exe` and the hash matches
+  the release binary.
+- Secure-lock probe against a live `AgentHost`: first lock kept `"This PC was locked from your phone."`,
+  a second `EnterSecureLock` left the message unchanged, and `ExitSecureLock` cleared the state.
+- `cargo test`: 5 passed; `cargo clippy`: clean; `probe 5` on the mounted `E:`: 0.5-0.9 ms per full scan.
+- Installed binaries were replaced in place with the verified build: `%APPDATA%\Sentinel\Sentinel.exe` hash
+  matches the installer payload, and `sentinel-key.exe` hash matches `usbkey\target\release\sentinel-key.exe`.
+  The guard is running and the drive now carries a v2 marker (363 bytes, header version 2).
+
+### Open items
+
+- The guard's live insert/remove lock action still needs a physical unplug test while a phone secure lock is
+  active. The source-level idempotence and installed binaries are verified; the actual screen transition is
+  the remaining observation.
+- Only the `SENTINEL.KEY` marker is encrypted. The rest of the USB drive is normal storage; use BitLocker To
+  Go if the whole drive needs encryption.
+- 3.1.0 artifacts are built locally (`installer\out\Sentinel Setup.exe` and
+  `usbkey\target\release\sentinel-key.exe`); the GitHub release, `SHA256SUMS.txt` and download links are not
+  published yet. No commit, tag or push has been made.
+
 ## [3.0.3] — 2026-11-24
 
 Installer 3.0.3 · Agent 2.0.3 · Relay 2.0.1 · Phone 2.0.2 (20) · Watch 2.0.1 (12) · Flipper 1.1.0

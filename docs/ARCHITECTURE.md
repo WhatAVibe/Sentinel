@@ -111,6 +111,36 @@ Unlock paths: the 6-digit code on the overlay, or `unlock_screen` with a code fr
 agent exit clears the lock, so quitting requires the same code. The overlay window refuses normal close
 events and a 2-second guard re-raises it.
 
+`EnterSecureLock` is idempotent: if the overlay is already active it returns without changing the message or
+creating a second window. This matters when the USB guard tries to lock a PC that was already locked from
+the phone. The guard first reads `/local/status`; an active secure lock is left untouched. Overlay text
+raised by the guard is generic ("This PC is locked. Enter your Sentinel code to unlock.") and never names
+the USB key.
+
+## USB presence key
+
+`usbkey/` is a Rust companion app (`sentinel-key.exe`). It enumerates removable volumes, writes an encrypted
+`SENTINEL.KEY` marker, and runs a 300 ms presence loop. The marker is AES-256-GCM; the key is 32 random bytes
+protected with Windows DPAPI under `%APPDATA%\Sentinel\usbkey.json`, and the AAD binds the ciphertext to the
+drive's hardware serial, vendor/product/revision, volume GUID, volume serial and total size. A copied marker
+does not authenticate on another drive. Version 1 markers are still accepted on the enrolled PC; re-enrolling
+upgrades to version 2.
+
+The guard reads the drive set with `GetLogicalDrives` + `GetDriveTypeW` on every 300 ms tick. Full volume
+identity and marker decryption only run when the set changes or every five seconds while a key is present.
+On removal it checks `/local/status` before calling `lock_screen`; an already-active secure lock is left
+alone. Its fallback is `LockWorkStation`, and the lock message never reveals the USB key.
+
+The guard reports insert/remove transitions to the agent over the authenticated loopback API:
+
+- `POST /local/key/presence` -> `SetSentinelKeyPresence`; surfaced as `key_present` / `key_label` in state.
+- `POST /local/key/unlock` -> releases the secure lock only if that key was seen within 45 seconds.
+
+Removal policy is evaluated in the guard: `secure`, `windows`, `away` or `none`, with a grace period. The
+`secure` path calls the agent's `lock_screen` command and falls back to `LockWorkStation` if the agent is
+unreachable or unpaired. The guard skips locking during Windows shutdown. See
+[USB-KEY.md](USB-KEY.md) for the threat model and limitations.
+
 ## Phone management
 
 Phones are stored per device with a stable `uid` sent at pairing, so re-pairing updates the existing row
@@ -279,5 +309,5 @@ Flipper                      Phone app                       Relay / Agent
 
 ## Versioning
 
-Agent 2.0.3 · server 2.0.1 · app 2.0.2 · watch 2.0.1, flipper 1.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
+Agent 2.1.0 · server 2.0.1 · app 2.0.2 · watch 2.0.1, flipper 1.1 · relay protocol v1.2. Breaking API changes bump the protocol and the
 `min_payload`/`min_loader` style checks can be mirrored from the Flopware setup if the suite is extended.

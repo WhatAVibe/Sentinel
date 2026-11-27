@@ -58,6 +58,7 @@ public partial class UninstallWindow : Window
         else
         {
             TryDelete(Path.Combine(_installDir, "Sentinel.exe"));
+            TryDelete(Path.Combine(_installDir, "sentinel-key.exe"));
             TryDelete(Path.Combine(_installDir, "Sentinel.dll"));
             TryDelete(Path.Combine(_installDir, "Sentinel.deps.json"));
             TryDelete(Path.Combine(_installDir, "Sentinel.runtimeconfig.json"));

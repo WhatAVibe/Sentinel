@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -86,6 +88,7 @@ public partial class SettingsView : UserControl
             ? (SecurityKey.Available ? "No key linked" : "WebView2 runtime missing — install the Edge WebView2 runtime")
             : $"Linked · {link.CredentialId[..Math.Min(18, link.CredentialId.Length)]}…";
         AgentVersionText.Text = $"Sentinel agent {AgentInfo.Version}";
+        RefreshUsbKeyStatus();
         UpdateMasterStatus();
 
         StartupCheck.IsChecked = StartupManager.IsEnabled();
@@ -692,6 +695,77 @@ public partial class SettingsView : UserControl
         AdbDevicesText.Text = cfg.AdbEnabled
             ? $"ADB: {devices} · path: {adb.AdbPath ?? "not found"}"
             : "Direct link disabled.";
+        RefreshUsbKeyStatus();
+    }
+
+    private void SetupUsbKey_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new UsbKeySetupWindow { Owner = Window.GetWindow(this) };
+        window.ShowDialog();
+        RefreshUsbKeyStatus();
+    }
+
+    private void RefreshUsbKeyStatus()
+    {
+        if (UsbKeyText == null) return;
+        var path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Sentinel",
+            "usbkey-state.json");
+        try
+        {
+            if (!File.Exists(path))
+            {
+                UsbKeyText.Text = "No key enrolled - open Sentinel Key";
+                return;
+            }
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            var updated = root.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0;
+            var age = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - updated;
+            if (age > 10_000)
+            {
+                UsbKeyText.Text = "Guard not running - open Sentinel Key";
+                return;
+            }
+            var present = root.TryGetProperty("present", out var p) && p.ValueKind == JsonValueKind.True;
+            var label = root.TryGetProperty("label", out var l) ? l.GetString() ?? "" : "";
+            var drive = root.TryGetProperty("drive", out var d) ? d.GetString() ?? "" : "";
+            UsbKeyText.Text = present
+                ? $"Connected - {(string.IsNullOrWhiteSpace(label) ? "USB key" : label)} ({drive})"
+                : "Guard running - key not present";
+        }
+        catch
+        {
+            UsbKeyText.Text = "No key enrolled - open Sentinel Key";
+        }
+    }
+
+    private void ManageUsbKey_Click(object sender, RoutedEventArgs e)
+    {
+        var exe = UsbKeyTool.FindExecutable();
+        if (exe == null)
+        {
+            MessageBox.Show(
+                "sentinel-key.exe was not found. Build it with `cargo build --release` in the usbkey folder, or install a build that includes it.",
+                "Sentinel USB key", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exe,
+                WorkingDirectory = Path.GetDirectoryName(exe) ?? AppContext.BaseDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open Sentinel Key: {ex.Message}", "Sentinel USB key",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static string? Normalize(string raw)

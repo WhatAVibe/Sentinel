@@ -337,6 +337,25 @@
                         <Button Grid.Column="2" Content="Remove" Style="{StaticResource DangerButton}" Padding="12,7"
                                 Margin="8,0,0,0" Click="RemoveKey_Click" />
                     </Grid>
+                    <Border Style="{StaticResource Divider}" />
+                    <TextBlock Text="Sentinel USB key" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="Prepare a USB drive as a physical presence key. It can lock this PC when removed, or release the secure lock when inserted."
+                               Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#0E1218" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                CornerRadius="8" Padding="10,7">
+                            <TextBlock x:Name="UsbKeyText" FontSize="12" TextTrimming="CharacterEllipsis" Text="Checking key..." />
+                        </Border>
+                        <Button Grid.Column="1" Content="Set up key" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="SetupUsbKey_Click" />
+                        <Button Grid.Column="2" Content="Advanced" Style="{StaticResource GhostButton}" Padding="12,7"
+                                Margin="8,0,0,0" Click="ManageUsbKey_Click" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

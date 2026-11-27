@@ -1,9 +1,10 @@
 # Sentinel Installer
 
-WPF setup wizard for the Windows agent. Version **2.1.1**.
+WPF setup wizard for the Windows agent. Version **3.1.0** (agent 2.1.0, USB key 0.1.0).
 
-The published `Sentinel-Setup-2.1.0.exe` is a self-contained single file. It contains the compressed
-self-contained agent, so a clean Windows 10/11 x64 machine needs nothing preinstalled.
+The published `Sentinel-Setup-3.1.0.exe` is a self-contained single file. It contains the compressed
+self-contained agent and `sentinel-key.exe`, so a clean Windows 10/11 x64 machine needs nothing
+preinstalled.
 
 ## What it does
 
@@ -66,8 +67,22 @@ you already control.
 # out\Sentinel Setup.exe
 ```
 
-`build.ps1` publishes the agent (`PublishSingleFile`, compressed), zips it as the embedded payload, then
-publishes the installer with the payload as a resource. Requires the .NET 10 SDK.
+`build.ps1` publishes the agent (`PublishSingleFile`, compressed), builds the Rust `sentinel-key.exe`, zips
+both as the embedded payload, then publishes the installer with the payload as a resource. Requires the .NET
+10 SDK and the Rust MSVC toolchain.
+
+The payload must contain exactly `Sentinel.exe` and `sentinel-key.exe`. Verify it before publishing:
+
+```powershell
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::OpenRead("payload.zip")
+$zip.Entries | Select-Object FullName, Length
+$zip.Dispose()
+```
+
+`InstallPayload` extracts both files; `UninstallWindow` removes `sentinel-key.exe` on a non-wipe uninstall and
+`InstallerCore.RemoveUninstall` clears the `SentinelKeyGuard` Run value. Builds are unsigned; SmartScreen will
+warn. Full release steps: [../BUILD.md](../BUILD.md).
 
 ## Layout
 

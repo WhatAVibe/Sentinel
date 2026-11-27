@@ -15,7 +15,7 @@ Lock it, watch it, message it, and get it back — without a cloud account.
 [![Watch](https://img.shields.io/badge/watch-Wear%20OS%20Tiles-4285F4?style=flat-square&logo=wearos&logoColor=white)](#4-wear-os-app)
 [![Flipper](https://img.shields.io/badge/remote-Flipper%20Zero-FF8200?style=flat-square)](#6-flipper-zero-optional)
 [![Release](https://img.shields.io/github/v/release/WhatAVibe/Sentinel?style=flat-square&color=6EE7A8&label=release)](https://github.com/WhatAVibe/Sentinel/releases/latest)
-[![Version](https://img.shields.io/badge/version-3.0.3-6EE7A8?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-3.1.0-6EE7A8?style=flat-square)](#versioning)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Download](#download) · [Quick start](#quick-start) · [Screenshots](#screenshots) · [Security](#security-model) · [Customization](#customization) · [Docs](#documentation) · [Troubleshooting](#troubleshooting)
@@ -36,8 +36,8 @@ unsigned; Windows SmartScreen will ask you to confirm the publisher.
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows 10/11 x64** | [Sentinel-Setup-3.0.3.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.3.exe) | Installer with the self-contained agent 2.0.3, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
-| Windows (agent only) | [Sentinel-Agent-2.0.3-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-2.0.3-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
+| **Windows 10/11 x64** | [Sentinel-Setup-3.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.1.0.exe) | Installer with the self-contained agent 2.1.0, QR pairing, Update/Repair and an agent-based uninstaller. Recommended. |
+| Windows (agent only) | [Sentinel-Agent-2.1.0-win-x64.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Agent-2.1.0-win-x64.exe) | Portable single file; no installer, keeps `%APPDATA%\Sentinel` |
 | **Android 8.0+** | [Sentinel-Phone-2.0.2.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Phone-2.0.2.apk) | Flutter phone app |
 | Wear OS 3+ (API 30) | [Sentinel-Watch-2.0.1.apk](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Watch-2.0.1.apk) | Companion watch app, four tiles and complications |
 | Relay server | [Sentinel-Relay-2.0.1.zip](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Relay-2.0.1.zip) | Flask + SQLite relay source; Python 3.10+ |
@@ -180,6 +180,7 @@ No accounts, no subscriptions, no telemetry. One Flask process, one SQLite file,
 | **2FA everywhere** | TOTP gates unlock, disarm, secure-lock release, phone removal and agent exit |
 | **Clipboard push** | Tap the live code on the phone or watch to put it on the PC clipboard, then Ctrl+V |
 | **Hardware key** | Link a FIDO2 key (YubiKey, Flipper) and unlock locally with a touch |
+| **USB presence key** | Encrypted, drive-bound marker that can lock on removal or release the secure lock on insert. See [docs/USB-KEY.md](docs/USB-KEY.md) |
 | **Secure lock** | Full-desktop 2FA lock that swallows shortcuts and input until the code is entered |
 | **Watchdog** | Detached supervisor relaunches the agent after an unauthorized kill |
 | **Multiple PCs** | Pair several PCs, switch between them, give each a local name |
@@ -340,7 +341,7 @@ again. Docker: `docker compose stop sentinel`, restore into the `sentinel-data` 
 
 ### 2. Windows agent
 
-Run **[Sentinel-Setup-3.0.3.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.0.3.exe)**
+Run **[Sentinel-Setup-3.1.0.exe](https://github.com/WhatAVibe/Sentinel/releases/latest/download/Sentinel-Setup-3.1.0.exe)**
 and follow the wizard: terms, install location, recovery password, relay address, pairing. Re-running the
 setup offers **Update / Repair** or **Uninstall**.
 
@@ -608,10 +609,13 @@ Common relay keys:
 | Document | What's inside |
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Step-by-step install, tunnels, ADB direct link, pairing |
+| [docs/USB-KEY.md](docs/USB-KEY.md) | USB presence key: enrollment, encryption, secure-lock rules, limitations |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, secrets, secure lock, hardening checklist |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent internals, capture pipeline, relay protocol |
 | [docs/API.md](docs/API.md) | REST endpoints, payloads, errors |
 | [docs/ENCRYPTION.md](docs/ENCRYPTION.md) | Relay-blind encryption design, key handshake, quotas |
+| [docs/LOGGING.md](docs/LOGGING.md) | Agent and USB key logs, rotation, diagnostics, privacy |
+| [BUILD.md](BUILD.md) | Build, verify and release checklist (no push without owner approval) |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and upgrade notes |
 | [flipper/README.md](flipper/README.md) | Flipper build, BLE setup, line protocol, WiFi board |
 | [watch/README.md](watch/README.md) | Watch build, install, tiles, config |
@@ -703,6 +707,12 @@ python server\tests\smoke.py http://127.0.0.1:8799
 # Agent self-test: TOTP vectors, capture, local API, ADB
 agent\Sentinel\bin\Release\net10.0-windows\Sentinel.exe --selftest out.json
 
+# USB key: crypto/DPAPI tests and full-scan timing
+cd usbkey
+cargo test
+.\target\release\sentinel-key.exe selftest
+.\target\release\sentinel-key.exe probe 5
+
 # Phone unit tests
 cd mobile; flutter test
 ```
@@ -715,15 +725,16 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Component | Version | Stack |
 |---|---|---|
-| Windows agent | 2.0.3 | C# / .NET 10 WPF |
+| Windows agent | 2.1.0 | C# / .NET 10 WPF |
 | Relay server | 2.0.1 | Python / Flask / SQLite |
 | Phone app | 2.0.2 (build 20) | Flutter |
 | Wear OS app | 2.0.1 | Kotlin / Compose / Tiles / Complications |
-| Desktop installer | 3.0.3 | WPF setup and agent uninstaller |
+| Desktop installer | 3.1.0 | WPF setup and agent uninstaller |
+| USB key | 0.1.0 | Rust / eframe / AES-256-GCM |
 | Flipper app | 1.1 | C / Flipper SDK (API 87.1) |
 
 Bump the version in the component's own source (`AgentInfo.cs`, `config.py`, `pubspec.yaml`,
-`watch/app/build.gradle.kts`, `flipper/application.fam`) and keep the docs in sync.
+`watch/app/build.gradle.kts`, `flipper/application.fam`, `usbkey/Cargo.toml`) and keep the docs in sync.
 
 ---
 

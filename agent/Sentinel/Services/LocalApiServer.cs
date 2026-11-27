@@ -206,6 +206,30 @@ public sealed class LocalApiServer : IDisposable
                 return Json(new { screenshots = shots });
             }
 
+            case ("POST", "/local/key/presence"):
+            {
+                var body = ParseJson(request.Body);
+                var id = GetString(body, "id");
+                if (string.IsNullOrWhiteSpace(id)) return Json(new { error = "id_required" }, 400);
+                _host.SetSentinelKeyPresence(
+                    id,
+                    GetBool(body, "present"),
+                    GetString(body, "label"),
+                    GetString(body, "drive"));
+                return Json(new { ok = true, present = _host.SentinelKeyPresent });
+            }
+
+            case ("POST", "/local/key/unlock"):
+            {
+                if (Limited($"key-unlock:{request.RemoteIp}", 10, TimeSpan.FromMinutes(1)))
+                    return Json(new { error = "too_many_attempts" }, 429);
+                var body = ParseJson(request.Body);
+                var id = GetString(body, "id");
+                if (!_host.TryUnlockWithSentinelKey(id, out var why))
+                    return Json(new { error = why }, 403);
+                return Json(new { ok = true, secure_lock = false });
+            }
+
             case ("POST", "/local/command"):
             {
                 var body = ParseJson(request.Body);
@@ -390,6 +414,20 @@ public sealed class LocalApiServer : IDisposable
         if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value))
             return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
         return "";
+    }
+
+    private static bool GetBool(JsonElement element, string name, bool fallback = false)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(name, out var value))
+            return fallback;
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(value.GetString(), out var parsed) && parsed,
+            JsonValueKind.Number => value.TryGetInt32(out var number) && number != 0,
+            _ => fallback
+        };
     }
 
     private static Dictionary<string, JsonElement> ExtractArgs(JsonElement body)

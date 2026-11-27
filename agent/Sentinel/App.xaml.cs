@@ -115,6 +115,7 @@ public partial class App : Application
         Host.ToastRequested += text => UiState.Post(() => new ToastWindow("Message from your phone", text).Show());
         Tray = new TrayService(Host, ShowDashboard, ShowPairing, ShowSettings, RequestDisarm, RequestExit);
         Host.Start();
+        UsbKeyGuard.TryStart();
         StartupManager.CleanupLegacy();
         Host.AwayChanged += () => UiState.Post(OnAwayChanged);
         StartWatchdog();

@@ -27,8 +27,8 @@ public sealed class PhoneEntry
 
 public static class InstallerCore
 {
-    public const string ProductVersion = "3.0.3";
-    public const string AgentVersion = "2.0.3";
+    public const string ProductVersion = "3.1.0";
+    public const string AgentVersion = "2.1.0";
     public const string PhoneVersion = "2.0.2";
     public const string WatchVersion = "2.0.1";
     public const string Repository = "https://github.com/WhatAVibe/Sentinel";
@@ -243,6 +243,7 @@ public static class InstallerCore
         {
             try { key.DeleteValue(legacy, false); } catch { }
         }
+        try { key.DeleteValue("SentinelKeyGuard", false); } catch { }
     }
 
     public static void RegisterUninstall(string dir)
@@ -268,6 +269,7 @@ public static class InstallerCore
             key?.DeleteValue(RunValueName, false);
             key?.DeleteValue(SupervisorValueName, false);
             key?.DeleteValue("Sentinel", false);
+            key?.DeleteValue("SentinelKeyGuard", false);
         }
         catch
         {
@@ -293,6 +295,10 @@ public static class InstallerCore
 
     public static void StopAgent()
     {
+        foreach (var process in Process.GetProcessesByName("sentinel-key"))
+        {
+            try { process.Kill(true); } catch { }
+        }
         foreach (var process in Process.GetProcessesByName("Sentinel"))
         {
             try { process.Kill(true); } catch { }

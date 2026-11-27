@@ -70,6 +70,8 @@ public sealed class StateDto
     [JsonPropertyName("agent_uptime_seconds")] public long AgentUptimeSeconds { get; set; }
     [JsonPropertyName("local_api")] public bool LocalApi { get; set; }
     [JsonPropertyName("phone_present")] public bool PhonePresent { get; set; }
+    [JsonPropertyName("key_present")] public bool KeyPresent { get; set; }
+    [JsonPropertyName("key_label")] public string? KeyLabel { get; set; }
     [JsonPropertyName("secure_lock")] public bool SecureLock { get; set; }
 }
 
